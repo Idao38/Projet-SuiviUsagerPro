@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from utils.date_utils import get_current_date, convert_to_db_date, convert_from_db_date
+from datetime import datetime
 
 class User:
     def __init__(self, id=None, nom=None, prenom=None, date_naissance=None, telephone=None, email=None, adresse=None, date_creation=None):
@@ -9,7 +10,7 @@ class User:
         self.telephone = telephone
         self.email = email
         self.adresse = adresse
-        self.date_creation = date_creation or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.date_creation = date_creation or get_current_date()
 
     @classmethod
     def from_db(cls, row):

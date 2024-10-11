@@ -1,4 +1,4 @@
-from datetime import datetime
+from utils.date_utils import get_current_date, convert_to_db_date, convert_from_db_date
 
 class Workshop:
     def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, date=None, conseiller=None):
@@ -7,7 +7,7 @@ class Workshop:
         self.description = description
         self.categorie = categorie
         self.payant = payant
-        self.date = date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.date = date or get_current_date()
         self.conseiller = conseiller
 
     @classmethod

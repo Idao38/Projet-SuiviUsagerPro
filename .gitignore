@@ -30,6 +30,7 @@ Thumbs.db
 *.swp
 *.swo
 .gitignore
+.cursorignore
 
 # Fichiers de configuration locaux
 config.ini

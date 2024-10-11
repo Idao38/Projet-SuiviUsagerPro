@@ -54,7 +54,6 @@ def is_valid_date(date_string):
         return True
     except ValueError:
         return False
-
 def get_current_date():
     """
     Retourne la date actuelle au format JJ/MM/AAAA.

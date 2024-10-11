@@ -4,6 +4,7 @@ from models.user import User
 from models.workshop import Workshop
 from datetime import datetime, timedelta
 import csv
+from utils.date_utils import convert_from_db_date
 
 class UserManagement(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
