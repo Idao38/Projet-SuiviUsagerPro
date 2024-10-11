@@ -52,6 +52,8 @@ Documentation_de_projet/
 # Fichiers de couverture de test
 .coverage
 htmlcov/
+tests/
+run_tests.py
 
 # Fichiers spécifiques à CustomTkinter (si nécessaire)
 # Ajoutez ici des fichiers spécifiques à CustomTkinter si besoin
