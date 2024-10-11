@@ -1,0 +1,56 @@
+
+**# Fichiers Python compilés
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environnements virtuels
+venv/
+env/
+.env
+.vscode
+
+# Fichiers de base de données SQLite
+*.db
+*.sqlite3
+
+# Fichiers de logs
+*.log
+
+# Fichiers temporaires
+*.tmp
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers d'IDE et d'éditeur
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Fichiers de configuration locaux
+config.ini
+*.cfg
+*.json
+*.ini
+
+# Fichiers d'export
+export_usagers_*.csv
+
+# Fichiers de build
+build/
+dist/
+*.egg-info/
+
+# Fichiers de documentation générés
+docs/_build/
+Documentation_de_projet/
+
+# Fichiers de couverture de test
+.coverage
+htmlcov/
+
+# Fichiers spécifiques à CustomTkinter (si nécessaire)
+# Ajoutez ici des fichiers spécifiques à CustomTkinter si besoin
