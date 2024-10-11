@@ -23,6 +23,9 @@ class UserManagement(ctk.CTkFrame):
         self.user_list = ctk.CTkScrollableFrame(self)
         self.user_list.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
 
+        # Ajoutez cette ligne pour créer l'attribut search_entry
+        self.search_entry = ctk.CTkEntry(self)
+
         # Chargement initial des usagers
         self.load_users()
 

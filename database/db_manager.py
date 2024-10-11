@@ -98,3 +98,6 @@ class DatabaseManager:
             )
             workshops.append(workshop)
         return workshops
+
+    def get_last_insert_id(self):
+        return self.cursor.lastrowid

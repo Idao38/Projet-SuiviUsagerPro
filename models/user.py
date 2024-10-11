@@ -10,7 +10,7 @@ class User:
         self.telephone = telephone
         self.email = email
         self.adresse = adresse
-        self.date_creation = date_creation or get_current_date()
+        self.date_creation = date_creation or datetime.now().strftime('%Y-%m-%d')
 
     @classmethod
     def from_db(cls, row):
@@ -29,21 +29,18 @@ class User:
         }
 
     def save(self, db_manager):
-        if self.id is None:
-            query = """
-            INSERT INTO users (nom, prenom, date_naissance, telephone, email, adresse, date_creation)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
-            params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.date_creation)
-        else:
-            query = """
-            UPDATE users
-            SET nom=?, prenom=?, date_naissance=?, telephone=?, email=?, adresse=?
-            WHERE id=?
-            """
+        if self.id:
+            query = """UPDATE users SET nom=?, prenom=?, date_naissance=?, telephone=?, email=?, adresse=?
+                       WHERE id=?"""
             params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.id)
-        
-        db_manager.execute_query(query, params)
+        else:
+            query = """INSERT INTO users (nom, prenom, date_naissance, telephone, email, adresse, date_creation)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)"""
+            params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.date_creation)
+
+        cursor = db_manager.execute_query(query, params)
+        if not self.id:
+            self.id = db_manager.get_last_insert_id()  # Utilisez une méthode de db_manager pour obtenir le dernier ID inséré
 
     @staticmethod
     def get_all(db_manager):
@@ -51,11 +48,13 @@ class User:
         rows = db_manager.fetch_all(query)
         return [User.from_db(row) for row in rows]
 
-    @staticmethod
-    def get_by_id(db_manager, user_id):
-        query = "SELECT * FROM users WHERE id = ?"
-        row = db_manager.fetch_one(query, (user_id,))
-        return User.from_db(row) if row else None
+    @classmethod
+    def get_by_id(cls, db_manager, user_id):
+        query = "SELECT id, nom, prenom, date_naissance, telephone, email, adresse, date_creation FROM users WHERE id = ?"
+        result = db_manager.fetch_one(query, (user_id,))
+        if result:
+            return cls(*result)
+        return None
 
     @staticmethod
     def get_inactive_users(db_manager, inactive_period):
@@ -92,3 +91,10 @@ class User:
         # Cette méthode devrait être implémentée pour retourner la date de la dernière activité de l'utilisateur
         # Elle pourrait nécessiter une requête à la base de données pour obtenir la date du dernier atelier
         pass
+
+    @classmethod
+    def delete(cls, db_manager, user_id):
+        # Supprimer d'abord les ateliers associés
+        db_manager.execute_query("DELETE FROM workshops WHERE user_id = ?", (user_id,))
+        # Puis supprimer l'utilisateur
+        db_manager.execute_query("DELETE FROM users WHERE id = ?", (user_id,))

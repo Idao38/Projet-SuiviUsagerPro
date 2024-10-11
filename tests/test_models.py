@@ -3,10 +3,11 @@ from .test_base import BaseTestCase
 from models.user import User
 from models.workshop import Workshop
 from utils.date_utils import get_current_date
+from datetime import datetime
 
 class TestUser(BaseTestCase):
     def test_user_creation(self):
-        user = User(nom="Dupont", prenom="Marie", date_naissance="1990-01-01", telephone="0123456789")
+        user = User(nom="Dupont", prenom="Marie", date_naissance="1990-01-01", telephone="0123456789", date_creation=datetime.now().strftime('%Y-%m-%d'))
         user.save(self.db_manager)
         
         fetched_user = User.get_by_id(self.db_manager, 1)

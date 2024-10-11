@@ -60,6 +60,7 @@ class Workshop:
         rows = db_manager.fetch_all(query, (user_id,))
         return [Workshop.from_db(row) for row in rows]
 
-    def delete(self, db_manager):
+    @classmethod
+    def delete(cls, db_manager, workshop_id):
         query = "DELETE FROM workshops WHERE id = ?"
-        db_manager.execute_query(query, (self.id,))
+        db_manager.execute_query(query, (workshop_id,))
