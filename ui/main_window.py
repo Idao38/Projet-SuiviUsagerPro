@@ -8,6 +8,7 @@ from .add_user import AddUser
 from .user_management import UserManagement
 from .workshop_history import WorkshopHistory
 from .settings import Settings
+from .data_management import DataManagement
 from theme import set_dark_theme, set_light_theme
 
 class MainWindow(ctk.CTkFrame):
@@ -40,7 +41,8 @@ class MainWindow(ctk.CTkFrame):
         self.user_management = UserManagement(self.main_content, db_manager=self.db_manager)
         self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
         self.settings = Settings(self.main_content, db_manager=self.db_manager, main_window=self)
-        
+        self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
+
         # Afficher le tableau de bord par défaut
         self.show_dashboard()
 
@@ -56,7 +58,7 @@ class MainWindow(ctk.CTkFrame):
     def create_sidebar(self):
         self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.sidebar.grid(row=0, column=0, rowspan=3, sticky="nsew")
-        self.sidebar.grid_rowconfigure(5, weight=1)  # Espace extensible avant le bouton Paramètres
+        self.sidebar.grid_rowconfigure(6, weight=1)  # Espace extensible avant le bouton Paramètres
 
         self.logo_label = ctk.CTkLabel(self.sidebar, text="SuiviUsagerPro", font=ctk.CTkFont(size=20, weight="bold"))
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
@@ -73,9 +75,11 @@ class MainWindow(ctk.CTkFrame):
         self.sidebar_button_4 = ctk.CTkButton(self.sidebar, text="Historique des ateliers", command=self.show_workshop_history)
         self.sidebar_button_4.grid(row=4, column=0, padx=20, pady=10)
 
+        self.sidebar_button_5 = ctk.CTkButton(self.sidebar, text="Gestion des données", command=self.show_data_management)
+        self.sidebar_button_5.grid(row=5, column=0, padx=20, pady=10)
         # Bouton Paramètres en bas de la barre latérale
         self.settings_button = ctk.CTkButton(self.sidebar, text="Paramètres", command=self.show_settings)
-        self.settings_button.grid(row=6, column=0, padx=20, pady=(0, 20), sticky="s")
+        self.settings_button.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="s")
 
     def create_top_bar(self):
         self.top_bar = ctk.CTkFrame(self, height=40, corner_radius=0)
@@ -154,6 +158,10 @@ class MainWindow(ctk.CTkFrame):
         self.hide_all_frames()
         self.workshop_history.grid(row=0, column=0, sticky="nsew")
 
+    def show_data_management(self):
+        self.hide_all_frames()
+        self.data_management.grid(row=0, column=0, sticky="nsew")
+
     def show_settings(self):
         self.hide_all_frames()
         self.settings.grid(row=0, column=0, sticky="nsew")
@@ -163,7 +171,7 @@ class MainWindow(ctk.CTkFrame):
         self.add_user.grid(row=0, column=0, sticky="nsew")
 
     def hide_all_frames(self):
-        for frame in (self.dashboard, self.add_user, self.user_management, self.workshop_history, self.settings):
+        for frame in (self.dashboard, self.add_user, self.user_management, self.workshop_history, self.settings, self.data_management):
             frame.grid_forget()
 
     def on_closing(self):
