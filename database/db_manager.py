@@ -1,5 +1,6 @@
 import sqlite3
 from models.user import User
+from models.workshop import Workshop
 
 class DatabaseManager:
     def __init__(self, db_path):
@@ -80,3 +81,20 @@ class DatabaseManager:
         query = "SELECT * FROM users"
         results = self.fetch_all(query)
         return [User.from_db(row) for row in results]
+
+    def get_all_workshops(self):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM workshops")
+        workshops = []
+        for row in cursor.fetchall():
+            workshop = Workshop(
+                id=row[0],
+                user_id=row[1],
+                description=row[2],
+                categorie=row[3],
+                payant=row[4],
+                date=row[5],
+                conseiller=row[6]
+            )
+            workshops.append(workshop)
+        return workshops

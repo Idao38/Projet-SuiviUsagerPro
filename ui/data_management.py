@@ -29,7 +29,15 @@ class DataManagement(ctk.CTkFrame):
 
         # Section Exportation CSV
         self.export_frame = self.create_section(self.content_frame, "Exportation CSV", 1)
-        self.export_button = ctk.CTkButton(self.export_frame, text="Exporter les données en CSV", command=self.export_csv)
+        
+        # Menu déroulant pour choisir le type d'export
+        self.export_options = ["Utilisateurs", "Ateliers", "Toutes les données"]
+        self.export_var = ctk.StringVar(value=self.export_options[0])
+        self.export_menu = ctk.CTkOptionMenu(self.export_frame, variable=self.export_var, values=self.export_options)
+        self.export_menu.pack(pady=(0, 10))
+
+        # Bouton pour valider l'export
+        self.export_button = ctk.CTkButton(self.export_frame, text="Exporter les données", command=self.export_csv)
         self.export_button.pack(pady=10)
 
     def create_section(self, parent, title, row):
@@ -75,7 +83,18 @@ class DataManagement(ctk.CTkFrame):
 
     def export_csv(self):
         exporter = CSVExporter(self.db_manager)
-        success, message = exporter.export_all_data()
+        export_type = self.export_var.get()
+
+        if export_type == "Utilisateurs":
+            success, message = exporter.export_users()
+        elif export_type == "Ateliers":
+            success, message = exporter.export_workshops()
+        elif export_type == "Toutes les données":
+            success, message = exporter.export_all_data()
+        else:
+            messagebox.showerror("Erreur", "Type d'exportation non reconnu.")
+            return
+
         if success:
             messagebox.showinfo("Exportation réussie", message)
         else:
