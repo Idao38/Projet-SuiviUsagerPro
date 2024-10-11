@@ -7,9 +7,10 @@ import csv
 from utils.date_utils import convert_from_db_date
 
 class UserManagement(ctk.CTkFrame):
-    def __init__(self, master, db_manager, **kwargs):
+    def __init__(self, master, db_manager, main_window, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
+        self.main_window = main_window
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -50,8 +51,7 @@ class UserManagement(ctk.CTkFrame):
             edit_button.pack(side="right", padx=5)
 
     def edit_user(self, user):
-        # Implémenter la logique pour modifier un usager
-        pass
+        self.main_window.edit_user(user)
 
     def display_search_results(self, users):
         # Effacer la liste actuelle
@@ -66,11 +66,11 @@ class UserManagement(ctk.CTkFrame):
             name_label = ctk.CTkLabel(user_frame, text=f"{user.nom} {user.prenom}")
             name_label.pack(side="left", padx=5)
 
-            edit_button = ctk.CTkButton(user_frame, text="Modifier", command=lambda u=user: self.edit_user(u))
+            edit_button = ctk.CTkButton(user_frame, text="Ouvrir", command=lambda u=user: self.edit_user(u))
             edit_button.pack(side="right", padx=5)
 
     def delete_user(self, user):
         if messagebox.askyesno("Confirmation", f"Êtes-vous sûr de vouloir supprimer l'usager {user.nom} {user.prenom} ?"):
             user.delete(self.db_manager)
             messagebox.showinfo("Suppression", f"L'usager {user.nom} {user.prenom} a été supprimé.")
-            self.load_users()  # Recharger la liste des usagers
+            self.load_users()

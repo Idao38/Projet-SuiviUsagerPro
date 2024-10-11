@@ -9,6 +9,7 @@ from .user_management import UserManagement
 from .workshop_history import WorkshopHistory
 from .settings import Settings
 from .data_management import DataManagement
+from .user_edit import UserEditFrame
 from theme import set_dark_theme, set_light_theme
 
 class MainWindow(ctk.CTkFrame):
@@ -38,7 +39,7 @@ class MainWindow(ctk.CTkFrame):
         # Initialiser les différentes sections
         self.dashboard = Dashboard(self.main_content, db_manager=self.db_manager)
         self.add_user = AddUser(self.main_content, db_manager=self.db_manager)
-        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager)
+        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, main_window=self)
         self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
         self.settings = Settings(self.main_content, db_manager=self.db_manager, main_window=self)
         self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
@@ -170,9 +171,16 @@ class MainWindow(ctk.CTkFrame):
         self.hide_all_frames()
         self.add_user.grid(row=0, column=0, sticky="nsew")
 
+    def edit_user(self, user):
+        from .user_edit import UserEditFrame
+        self.hide_all_frames()
+        self.user_edit = UserEditFrame(self.main_content, self.db_manager, user, main_window=self)
+        self.user_edit.grid(row=0, column=0, sticky="nsew")
+
     def hide_all_frames(self):
-        for frame in (self.dashboard, self.add_user, self.user_management, self.workshop_history, self.settings, self.data_management):
-            frame.grid_forget()
+        for frame in (self.dashboard, self.add_user, self.user_management, self.workshop_history, self.settings, self.data_management, getattr(self, 'user_edit', None)):
+            if frame:
+                frame.grid_forget()
 
     def on_closing(self):
         self.db_manager.close()
