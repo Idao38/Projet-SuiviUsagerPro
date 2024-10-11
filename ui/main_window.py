@@ -11,11 +11,13 @@ from .settings import Settings
 from .data_management import DataManagement
 from .user_edit import UserEditFrame
 from theme import set_dark_theme, set_light_theme
+from .add_workshop import AddWorkshop
 
 class MainWindow(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
+        self.current_frame = None  # Ajoutez cette ligne
 
         # Initialiser le mode d'apparence
         self.set_initial_appearance()
@@ -38,8 +40,8 @@ class MainWindow(ctk.CTkFrame):
 
         # Initialiser les différentes sections
         self.dashboard = Dashboard(self.main_content, db_manager=self.db_manager)
-        self.add_user = AddUser(self.main_content, db_manager=self.db_manager)
-        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, main_window=self)
+        self.add_user = AddUser(self.main_content, db_manager=self.db_manager, update_callback=self.update_all_sections)
+        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, edit_user_callback=self.edit_user)
         self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
         self.settings = Settings(self.main_content, db_manager=self.db_manager, main_window=self)
         self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
@@ -148,34 +150,57 @@ class MainWindow(ctk.CTkFrame):
             self.user_management.load_users()
 
     def show_dashboard(self):
-        self.hide_all_frames()
-        self.dashboard.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.dashboard = Dashboard(self.main_content, self.db_manager)
+        self.dashboard.pack(fill="both", expand=True)
+        self.current_frame = self.dashboard  # Ajoutez cette ligne
 
     def show_user_management(self):
-        self.hide_all_frames()
-        self.user_management.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, edit_user_callback=self.edit_user)
+        self.user_management.pack(fill="both", expand=True)
+        self.current_frame = self.user_management  # Ajoutez cette ligne
 
     def show_workshop_history(self):
-        self.hide_all_frames()
-        self.workshop_history.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
+        self.workshop_history.pack(fill="both", expand=True)
+        self.current_frame = self.workshop_history  # Ajoutez cette ligne
 
     def show_data_management(self):
-        self.hide_all_frames()
-        self.data_management.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
+        self.data_management.pack(fill="both", expand=True)
+        self.current_frame = self.data_management  # Ajoutez cette ligne
 
     def show_settings(self):
-        self.hide_all_frames()
-        self.settings.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.settings = Settings(self.main_content, db_manager=self.db_manager, main_window=self)
+        self.settings.pack(fill="both", expand=True)
+        self.current_frame = self.settings  # Ajoutez cette ligne
 
     def show_add_user(self):
-        self.hide_all_frames()
-        self.add_user.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.add_user = AddUser(self.main_content, db_manager=self.db_manager, update_callback=self.update_all_sections)
+        self.add_user.pack(fill="both", expand=True)
+        self.current_frame = self.add_user  # Ajoutez cette ligne
 
     def edit_user(self, user):
-        from .user_edit import UserEditFrame
-        self.hide_all_frames()
-        self.user_edit = UserEditFrame(self.main_content, self.db_manager, user, main_window=self)
-        self.user_edit.grid(row=0, column=0, sticky="nsew")
+        self.clear_main_content()
+        self.user_edit = UserEditFrame(
+            self.main_content,
+            self.db_manager,
+            user,
+            show_user_management_callback=self.show_user_management,
+            show_add_workshop_callback=self.show_add_workshop,
+            update_callback=self.update_all_sections
+        )
+        self.user_edit.pack(fill="both", expand=True)
+        self.current_frame = self.user_edit  # Ajoutez cette ligne
+
+    def clear_main_content(self):
+        for widget in self.main_content.winfo_children():
+            widget.destroy()
 
     def hide_all_frames(self):
         for frame in (self.dashboard, self.add_user, self.user_management, self.workshop_history, self.settings, self.data_management, getattr(self, 'user_edit', None)):
@@ -187,10 +212,9 @@ class MainWindow(ctk.CTkFrame):
         self.master.destroy()
 
     def update_all_sections(self):
-        self.dashboard.update_stats()
+        self.dashboard.update()
         self.user_management.load_users()
-        self.workshop_history.load_workshops()
-        # Ajoutez ici d'autres mises à jour si nécessaire
+        self.workshop_history.load_history()
 
     def update_appearance(self):
         is_dark = get_dark_mode()
@@ -212,3 +236,32 @@ class MainWindow(ctk.CTkFrame):
         self.user_management.update()
         self.workshop_history.update()
         self.settings.update()
+
+    def show_add_workshop(self, user):
+        self.clear_main_content()
+        self.add_workshop = AddWorkshop(
+            self.main_content,
+            self.db_manager,
+            user,
+            show_user_edit_callback=lambda: self.show_user_edit(user),
+            update_callback=self.update_all_sections
+        )
+        self.add_workshop.pack(fill="both", expand=True)
+        self.current_frame = self.add_workshop
+
+    def update_and_show_user_edit(self, user):
+        self.update_all_sections()
+        self.show_user_edit(user)
+
+    def show_user_edit(self, user):
+        self.clear_main_content()
+        self.user_edit = UserEditFrame(
+            self.main_content,
+            self.db_manager,
+            user,
+            show_user_management_callback=self.show_user_management,
+            show_add_workshop_callback=self.show_add_workshop,
+            update_callback=self.update_all_sections
+        )
+        self.user_edit.pack(fill="both", expand=True)
+        self.current_frame = self.user_edit  # Ajoutez cette ligne

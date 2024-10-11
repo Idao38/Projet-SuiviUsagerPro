@@ -1,103 +1,93 @@
 import sqlite3
-from models.user import User
-from models.workshop import Workshop
+import logging
+from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     def __init__(self, db_path):
         self.db_path = db_path
-        self.conn = None
-        self.cursor = None
+        self.connection = None
 
-    def connect(self):
-        self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
+    def initialize(self):
+        """Initialize the database connection and create tables if they don't exist."""
+        try:
+            with self.get_connection() as conn:
+                self.create_tables(conn)
+            logging.info(f"Database initialized successfully: {self.db_path}")
+        except Exception as e:
+            logging.error(f"Error initializing database: {e}")
+            raise
 
-    def close(self):
-        if self.conn:
-            self.conn.close()
-            self.conn = None
-            self.cursor = None
+    @contextmanager
+    def get_connection(self):
+        try:
+            connection = sqlite3.connect(self.db_path)
+            connection.row_factory = sqlite3.Row
+            yield connection
+        finally:
+            if connection:
+                connection.close()
 
-    def create_tables(self):
-        self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nom TEXT NOT NULL,
-            prenom TEXT NOT NULL,
-            date_naissance TEXT,
-            telephone TEXT NOT NULL,
-            email TEXT,
-            adresse TEXT,
-            date_creation TEXT NOT NULL
-        )
-        ''')
-
-        self.cursor.execute('''
-        CREATE TABLE IF NOT EXISTS workshops (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            description TEXT,
-            categorie TEXT,
-            payant BOOLEAN,
-            date TEXT NOT NULL,
-            conseiller TEXT,
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )
-        ''')
-        self.conn.commit()
-
-    def execute_query(self, query, params=None):
-        if params is None:
-            self.cursor.execute(query)
-        else:
-            self.cursor.execute(query, params)
-        self.conn.commit()
-        return self.cursor.lastrowid
-
-    def fetch_all(self, query, params=None):
-        if params is None:
-            self.cursor.execute(query)
-        else:
-            self.cursor.execute(query, params)
-        return self.cursor.fetchall()
+    def execute(self, query, params=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                conn.commit()
+                return cursor
+            except sqlite3.Error as e:
+                logging.error(f"Error executing query: {e}")
+                conn.rollback()
+                raise
 
     def fetch_one(self, query, params=None):
-        if params is None:
-            self.cursor.execute(query)
-        else:
-            self.cursor.execute(query, params)
-        return self.cursor.fetchone()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                return cursor.fetchone()
+            except sqlite3.Error as e:
+                logging.error(f"Error fetching one: {e}")
+                raise
 
-    def search_users(self, search_term):
-        query = """
-        SELECT * FROM users
-        WHERE nom LIKE ? OR prenom LIKE ? OR telephone LIKE ? OR email LIKE ?
-        """
-        params = ('%' + search_term + '%',) * 4
-        results = self.fetch_all(query, params)
-        return [User.from_db(row) for row in results]
+    def fetch_all(self, query, params=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                return cursor.fetchall()
+            except sqlite3.Error as e:
+                logging.error(f"Error fetching all: {e}")
+                raise
 
     def get_all_users(self):
         query = "SELECT * FROM users"
-        results = self.fetch_all(query)
-        return [User.from_db(row) for row in results]
+        return self.fetch_all(query)
 
-    def get_all_workshops(self):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM workshops")
-        workshops = []
-        for row in cursor.fetchall():
-            workshop = Workshop(
-                id=row[0],
-                user_id=row[1],
-                description=row[2],
-                categorie=row[3],
-                payant=row[4],
-                date=row[5],
-                conseiller=row[6]
-            )
-            workshops.append(workshop)
-        return workshops
+    def close(self):
+        if self.connection:
+            try:
+                self.connection.close()
+            except sqlite3.ProgrammingError:
+                logging.warning("Tentative de fermeture d'une connexion dans un thread différent.")
+            self.connection = None
+            self.cursor = None
+            logging.info("Database connection closed")
 
-    def get_last_insert_id(self):
-        return self.cursor.lastrowid
+    def create_tables(self, connection):
+        with open('database/schema.sql', 'r') as schema_file:
+            schema = schema_file.read()
+        
+        connection.executescript(schema)
+
+    # Ajoutez d'autres méthodes spécifiques si nécessaire

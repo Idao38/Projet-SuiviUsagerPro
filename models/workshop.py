@@ -1,4 +1,6 @@
-from utils.date_utils import get_current_date, convert_to_db_date, convert_from_db_date
+from utils.date_utils import convert_to_db_date, convert_from_db_date
+from datetime import datetime
+import logging
 
 class Workshop:
     def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, date=None, conseiller=None):
@@ -7,7 +9,7 @@ class Workshop:
         self.description = description
         self.categorie = categorie
         self.payant = payant
-        self.date = date or get_current_date()
+        self.date = convert_to_db_date(date) if date else datetime.now().strftime("%Y-%m-%d")
         self.conseiller = conseiller
 
     @classmethod
@@ -32,7 +34,6 @@ class Workshop:
             VALUES (?, ?, ?, ?, ?, ?)
             """
             params = (self.user_id, self.description, self.categorie, self.payant, self.date, self.conseiller)
-            self.id = db_manager.execute_query(query, params)
         else:
             query = """
             UPDATE workshops
@@ -40,7 +41,15 @@ class Workshop:
             WHERE id=?
             """
             params = (self.user_id, self.description, self.categorie, self.payant, self.date, self.conseiller, self.id)
-            db_manager.execute_query(query, params)
+
+        try:
+            cursor = db_manager.execute(query, params)
+            if self.id is None:
+                self.id = cursor.lastrowid
+            return self.id
+        except Exception as e:
+            logging.error(f"Error saving workshop: {e}")
+            raise
 
     @staticmethod
     def get_all(db_manager):
@@ -64,3 +73,36 @@ class Workshop:
     def delete(cls, db_manager, workshop_id):
         query = "DELETE FROM workshops WHERE id = ?"
         db_manager.execute_query(query, (workshop_id,))
+
+    @classmethod
+    def get_all_with_users(cls, db_manager):
+        query = """
+        SELECT w.*, u.nom, u.prenom
+        FROM workshops w
+        JOIN users u ON w.user_id = u.id
+        ORDER BY w.date DESC
+        LIMIT 50
+        """
+        try:
+            results = db_manager.fetch_all(query)
+            logging.debug(f"Fetched results: {results}")  # Ajoutez cette ligne
+            workshops = []
+            for row in results:
+                logging.debug(f"Processing row: {row}")  # Ajoutez cette ligne
+                workshop = cls(
+                    id=row['id'],
+                    user_id=row['user_id'],
+                    description=row['description'],
+                    categorie=row['categorie'],
+                    payant=row['payant'],
+                    date=row['date'],
+                    conseiller=row['conseiller']
+                )
+                workshop.user_nom = row['nom']
+                workshop.user_prenom = row['prenom']
+                workshops.append(workshop)
+            return workshops
+        except Exception as e:
+            logging.error(f"Error fetching workshops with users: {e}")
+            logging.exception("Detailed error:")  # Ajoutez cette ligne pour voir la trace complète
+            return []

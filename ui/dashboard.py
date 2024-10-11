@@ -2,10 +2,16 @@ import customtkinter as ctk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from database.db_manager import DatabaseManager
+import logging
+import matplotlib
+logger = logging.getLogger(__name__)
+matplotlib.set_loglevel("WARNING")
 
 class Dashboard(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
         super().__init__(master, **kwargs)
+        if db_manager is None:
+            raise ValueError("DatabaseManager ne peut pas être None")
         self.db_manager = db_manager
         
         self.grid_rowconfigure(0, weight=1)
@@ -73,10 +79,6 @@ class Dashboard(ctk.CTkFrame):
         canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
 
     def update_stats(self):
-        if self.db_manager is None:
-            print("Erreur : DatabaseManager non initialisé")
-            return
-
         try:
             users_count = self.db_manager.fetch_all("SELECT COUNT(*) FROM users")[0][0]
             workshops_count = self.db_manager.fetch_all("SELECT COUNT(*) FROM workshops")[0][0]
@@ -88,42 +90,51 @@ class Dashboard(ctk.CTkFrame):
             self.active_users_label.configure(text=str(active_users))
             self.workshops_this_month_label.configure(text=str(workshops_this_month))
         except Exception as e:
-            print(f"Erreur lors de la mise à jour des statistiques : {e}")
+            logger.error(f"Erreur lors de la mise à jour des statistiques : {e}")
 
     def update_graph(self):
-        data = self.db_manager.fetch_all("""
-            SELECT strftime('%m', date) as month,
-                   SUM(CASE WHEN categorie = 'Individuel' THEN 1 ELSE 0 END) as individual,
-                   SUM(CASE WHEN categorie = 'Administratif' THEN 1 ELSE 0 END) as administrative
-            FROM workshops
-            WHERE date >= date('now', '-12 months')
-            GROUP BY month
-            ORDER BY month
-        """)
+        try:
+            data = self.db_manager.fetch_all("""
+                SELECT strftime('%m', date) as month,
+                       SUM(CASE WHEN categorie = 'Individuel' THEN 1 ELSE 0 END) as individual,
+                       SUM(CASE WHEN categorie = 'Administratif' THEN 1 ELSE 0 END) as administrative
+                FROM workshops
+                WHERE date >= date('now', '-12 months')
+                GROUP BY month
+                ORDER BY month
+            """)
+            
+            if not data:  # Si data est vide
+                self.graph.figure.clear()
+                self.graph.figure.text(0.5, 0.5, "Aucune donnée disponible", ha='center', va='center')
+                self.graph.draw()
+            else:
+                months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+                individual = [0] * 12
+                administrative = [0] * 12
 
-        months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-        individual = [0] * 12
-        administrative = [0] * 12
+                for row in data:
+                    month_index = int(row[0]) - 1
+                    individual[month_index] = row[1]
+                    administrative[month_index] = row[2]
 
-        for row in data:
-            month_index = int(row[0]) - 1
-            individual[month_index] = row[1]
-            administrative[month_index] = row[2]
+                self.graph_frame.destroy()
+                self.graph_frame = ctk.CTkFrame(self)
+                self.graph_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.graph_frame.destroy()
-        self.graph_frame = ctk.CTkFrame(self)
-        self.graph_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+                fig = Figure(figsize=(10, 4), dpi=100)
+                ax = fig.add_subplot(111)
 
-        fig = Figure(figsize=(10, 4), dpi=100)
-        ax = fig.add_subplot(111)
+                ax.bar(months, individual, label='Atelier individuel', color='#4CAF50')
+                ax.bar(months, administrative, bottom=individual, label='Atelier administratif', color='#2196F3')
 
-        ax.bar(months, individual, label='Atelier individuel', color='#4CAF50')
-        ax.bar(months, administrative, bottom=individual, label='Atelier administratif', color='#2196F3')
+                ax.set_ylabel('Nombre d\'ateliers')
+                ax.set_title('Ateliers par mois')
+                ax.legend()
 
-        ax.set_ylabel('Nombre d\'ateliers')
-        ax.set_title('Ateliers par mois')
-        ax.legend()
+                canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+                canvas.draw()
+                canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
 
-        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour du graphique : {e}")

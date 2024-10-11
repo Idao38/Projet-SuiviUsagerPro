@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from database.db_manager import DatabaseManager
 from utils.date_utils import convert_from_db_date
+from models.workshop import Workshop
 
 
 class WorkshopHistory(ctk.CTkFrame):
@@ -27,27 +28,18 @@ class WorkshopHistory(ctk.CTkFrame):
         self.load_history()
 
     def load_history(self):
-        if self.db_manager is None:
-            return
-
-        query = """
-        SELECT u.nom, u.prenom, w.date, w.categorie, w.conseiller
-        FROM workshops w
-        JOIN users u ON w.user_id = u.id
-        ORDER BY w.date DESC
-        LIMIT 50
-        """
-        data = self.db_manager.fetch_all(query)
+        workshops = Workshop.get_all_with_users(self.db_manager)
 
         for widget in self.history_frame.winfo_children():
             if isinstance(widget, ctk.CTkLabel) and widget.cget("font").cget("weight") != "bold":
                 widget.destroy()
 
-        for row, record in enumerate(data, start=1):
-            for col, value in enumerate(record):
-                if col == 2:  # Date column
-                    value = convert_from_db_date(value)
-                ctk.CTkLabel(self.history_frame, text=str(value)).grid(row=row, column=col, padx=10, pady=5, sticky="ew")
+        for row, workshop in enumerate(workshops, start=1):
+            ctk.CTkLabel(self.history_frame, text=workshop.user_nom).grid(row=row, column=0, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text=workshop.user_prenom).grid(row=row, column=1, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text=workshop.date).grid(row=row, column=2, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text=workshop.categorie).grid(row=row, column=3, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text=workshop.conseiller).grid(row=row, column=4, padx=10, pady=5, sticky="ew")
 
     def load_workshops(self):
         # Rechargez l'historique des ateliers

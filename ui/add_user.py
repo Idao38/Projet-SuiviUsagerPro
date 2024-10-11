@@ -4,9 +4,10 @@ from models.user import User
 from utils.date_utils import convert_to_db_date, is_valid_date
 
 class AddUser(ctk.CTkFrame):
-    def __init__(self, master, db_manager, **kwargs):
+    def __init__(self, master, db_manager, update_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
+        self.update_callback = update_callback
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -43,30 +44,32 @@ class AddUser(ctk.CTkFrame):
     def add_user(self):
         nom = self.nom_entry.get()
         prenom = self.prenom_entry.get()
+        date_naissance = convert_to_db_date(self.date_naissance_entry.get())
         telephone = self.telephone_entry.get()
-        date_naissance = self.date_naissance_entry.get()
         email = self.email_entry.get()
         adresse = self.adresse_entry.get()
 
-        if not all([nom, prenom, telephone]):
+        if not nom or not prenom or not telephone:
             messagebox.showerror("Erreur", "Veuillez remplir tous les champs obligatoires.")
             return
 
-        if date_naissance and not is_valid_date(date_naissance):
-            messagebox.showerror("Erreur", "Format de date invalide. Utilisez JJ/MM/AAAA.")
-            return
-
-        date_naissance = convert_to_db_date(date_naissance) if date_naissance else None
-
         new_user = User(nom=nom, prenom=prenom, date_naissance=date_naissance,
                         telephone=telephone, email=email, adresse=adresse)
-        new_user.save(self.db_manager)
+        try:
+            new_user.save(self.db_manager)
+            messagebox.showinfo("Succès", "L'usager a été ajouté avec succès.")
+            self.clear_fields()
+            self.update_callback()
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Impossible d'ajouter l'usager : {str(e)}")
 
-        messagebox.showinfo("Succès", "Nouvel utilisateur créé avec succès.")
-        self.clear_form()
-        
-        # Mettre à jour toutes les sections
-        self.master.master.update_all_sections()
+    def clear_fields(self):
+        self.nom_entry.delete(0, 'end')
+        self.prenom_entry.delete(0, 'end')
+        self.date_naissance_entry.delete(0, 'end')
+        self.telephone_entry.delete(0, 'end')
+        self.email_entry.delete(0, 'end')
+        self.adresse_entry.delete(0, 'end')
 
     def clear_form(self):
         for entry in [self.nom_entry, self.prenom_entry, self.telephone_entry, 

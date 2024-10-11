@@ -7,10 +7,10 @@ import csv
 from utils.date_utils import convert_from_db_date
 
 class UserManagement(ctk.CTkFrame):
-    def __init__(self, master, db_manager, main_window, **kwargs):
+    def __init__(self, master, db_manager, edit_user_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
-        self.main_window = main_window
+        self.edit_user_callback = edit_user_callback
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -35,7 +35,7 @@ class UserManagement(ctk.CTkFrame):
             widget.destroy()
 
         # Charger les usagers depuis la base de données
-        users = self.db_manager.get_all_users()
+        users = User.get_all(self.db_manager)
 
         # Afficher chaque usager dans la liste
         for user in users:
@@ -54,7 +54,7 @@ class UserManagement(ctk.CTkFrame):
             edit_button.pack(side="right", padx=5)
 
     def edit_user(self, user):
-        self.main_window.edit_user(user)
+        self.edit_user_callback(user)
 
     def display_search_results(self, users):
         # Effacer la liste actuelle
@@ -74,6 +74,19 @@ class UserManagement(ctk.CTkFrame):
 
     def delete_user(self, user):
         if messagebox.askyesno("Confirmation", f"Êtes-vous sûr de vouloir supprimer l'usager {user.nom} {user.prenom} ?"):
-            user.delete(self.db_manager)
-            messagebox.showinfo("Suppression", f"L'usager {user.nom} {user.prenom} a été supprimé.")
-            self.load_users()
+            try:
+                User.delete(self.db_manager, user.id)
+                messagebox.showinfo("Suppression", f"L'usager {user.nom} {user.prenom} a été supprimé.")
+                self.load_users()
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Impossible de supprimer l'usager : {str(e)}")
+
+    def add_workshop(self, user_id):
+        from ui.add_workshop import AddWorkshopFrame  # Import local pour éviter les imports circulaires
+        add_workshop_frame = AddWorkshopFrame(self.master, self.db_manager, user_id, self.update_user_list)
+        add_workshop_frame.grid(row=0, column=0, sticky="nsew")
+        add_workshop_frame.tkraise()
+
+    def update_user_list(self):
+        # Cette méthode est appelée après l'ajout d'un atelier pour rafraîchir la liste des utilisateurs
+        self.load_users()
