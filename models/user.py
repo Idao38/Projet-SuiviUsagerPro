@@ -3,28 +3,31 @@ from datetime import datetime
 import logging
 
 class User:
-    def __init__(self, id=None, nom="", prenom="", date_naissance=None, telephone="", email=None, adresse=None, date_creation=None):
+    def __init__(self, id=None, nom="", prenom="", date_naissance=None, telephone="", email=None, adresse=None, date_creation=None, last_activity_date=None):
         self.id = id
         self.nom = nom
         self.prenom = prenom
-        self.date_naissance = convert_to_db_date(date_naissance) if date_naissance else None
+        self.date_naissance = date_naissance  # Ne pas convertir ici
         self.telephone = telephone
         self.email = email
         self.adresse = adresse
-        self.date_creation = date_creation or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.date_creation = date_creation or datetime.now().strftime("%d/%m/%Y")  # Format JJ/MM/AAAA
+        self.last_activity_date = last_activity_date
 
     @classmethod
     def from_db(cls, row):
-        return cls(
-            id=row[0],
-            nom=row[1],
-            prenom=row[2],
-            date_naissance=row[3],
-            telephone=row[4],
-            email=row[5],
-            adresse=row[6],
-            date_creation=row[7]
+        user = cls(
+            id=row['id'],
+            nom=row['nom'],
+            prenom=row['prenom'],
+            date_naissance=row['date_naissance'],
+            telephone=row['telephone'],
+            email=row['email'],
+            adresse=row['adresse'],
+            date_creation=row['date_creation']
         )
+        user.last_activity_date = row['last_activity_date'] if 'last_activity_date' in row.keys() else None
+        return user
 
     def to_dict(self):
         return {
@@ -41,53 +44,50 @@ class User:
     def save(self, db_manager):
         if self.id is None:
             query = """
-                INSERT INTO users (nom, prenom, date_naissance, telephone, email, adresse)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO users (nom, prenom, date_naissance, telephone, email, adresse, date_creation, last_activity_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
-            params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse)
+            params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.date_creation, self.last_activity_date)
         else:
             query = """
                 UPDATE users
-                SET nom=?, prenom=?, date_naissance=?, telephone=?, email=?, adresse=?
+                SET nom=?, prenom=?, date_naissance=?, telephone=?, email=?, adresse=?, last_activity_date=?
                 WHERE id=?
             """
-            params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.id)
+            params = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.last_activity_date, self.id)
 
-        try:
-            cursor = db_manager.execute(query, params)
-            if self.id is None:
-                self.id = cursor.lastrowid
-            return self.id
-        except Exception as e:
-            logging.error(f"Error saving user: {e}")
-            raise
+        cursor = db_manager.execute(query, params)
+        if self.id is None:
+            self.id = cursor.lastrowid
+        return self.id
 
     @staticmethod
     def get_all(db_manager):
-        query = "SELECT * FROM users"
+        query = "SELECT id, nom, prenom, date_naissance, telephone, email, adresse, date_creation, last_activity_date FROM users"
         rows = db_manager.fetch_all(query)
         return [User.from_db(row) for row in rows]
 
     @classmethod
     def get_by_id(cls, db_manager, user_id):
         query = "SELECT * FROM users WHERE id = ?"
-        result = db_manager.fetch_one(query, (user_id,))
-        if result:
-            user_dict = dict(result)
-            user_dict['date_naissance'] = convert_from_db_date(user_dict['date_naissance'])
+        user_row = db_manager.fetch_one(query, (user_id,))
+        if user_row:
+            user_dict = dict(user_row)
+            if user_dict['date_naissance']:
+                user_dict['date_naissance'] = convert_from_db_date(user_dict['date_naissance'])
             return cls(**user_dict)
         return None
 
     @staticmethod
-    def get_inactive_users(db_manager, inactive_period):
-        cutoff_date = (datetime.now() - inactive_period).strftime("%Y-%m-%d %H:%M:%S")
+    def get_inactive_users(db_manager, inactivity_period):
+        cutoff_date = datetime.now() - inactivity_period
         query = """
-        SELECT u.* FROM users u
+        SELECT u.*, MAX(COALESCE(w.date, u.date_creation)) as last_activity_date FROM users u
         LEFT JOIN workshops w ON u.id = w.user_id
         GROUP BY u.id
-        HAVING MAX(w.date) < ? OR MAX(w.date) IS NULL
+        HAVING last_activity_date < ? OR last_activity_date IS NULL
         """
-        rows = db_manager.fetch_all(query, (cutoff_date,))
+        rows = db_manager.fetch_all(query, (cutoff_date.strftime("%Y-%m-%d"),))
         return [User.from_db(row) for row in rows]
 
     def delete(self, db_manager):
@@ -110,13 +110,24 @@ class User:
 
     @property
     def last_activity_date(self):
-        # Cette méthode devrait être implémentée pour retourner la date de la dernière activité de l'utilisateur
-        # Elle pourrait nécessiter une requête à la base de données pour obtenir la date du dernier atelier
-        pass
+        if not hasattr(self, '_last_activity_date'):
+            self._last_activity_date = None
+        return self._last_activity_date
+
+    @last_activity_date.setter
+    def last_activity_date(self, value):
+        self._last_activity_date = value
+
+    def get_last_activity_date(self, db_manager):
+        query = "SELECT MAX(date) as last_activity FROM workshops WHERE user_id = ?"
+        result = db_manager.fetch_one(query, (self.id,))
+        last_activity = result['last_activity'] if result and result['last_activity'] else None
+        self.last_activity_date = last_activity
+        return self.last_activity_date
 
     @classmethod
     def delete(cls, db_manager, user_id):
-        # Supprimer d'abord les ateliers associés
-        db_manager.execute_query("DELETE FROM workshops WHERE user_id = ?", (user_id,))
-        # Puis supprimer l'utilisateur
-        db_manager.execute_query("DELETE FROM users WHERE id = ?", (user_id,))
+        # Mettre à jour les ateliers associés pour définir user_id à NULL
+        db_manager.execute("UPDATE workshops SET user_id = NULL WHERE user_id = ?", (user_id,))
+        # Ensuite, supprimez l'utilisateur
+        db_manager.execute("DELETE FROM users WHERE id = ?", (user_id,))

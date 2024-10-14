@@ -30,9 +30,14 @@ class UserManagement(ctk.CTkFrame):
         self.load_users()
 
     def load_users(self):
-        # Effacer la liste actuelle
-        for widget in self.user_list.winfo_children():
-            widget.destroy()
+        # Vérifier si le widget user_list existe toujours
+        if hasattr(self, 'user_list') and self.user_list.winfo_exists():
+            for widget in self.user_list.winfo_children():
+                widget.destroy()
+        else:
+            # Recréer le widget user_list s'il n'existe plus
+            self.user_list = ctk.CTkScrollableFrame(self)
+            self.user_list.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
 
         # Charger les usagers depuis la base de données
         users = User.get_all(self.db_manager)
@@ -90,3 +95,23 @@ class UserManagement(ctk.CTkFrame):
     def update_user_list(self):
         # Cette méthode est appelée après l'ajout d'un atelier pour rafraîchir la liste des utilisateurs
         self.load_users()
+
+    def update_user_info(self, user_id):
+        user = User.get_by_id(self.db_manager, user_id)
+        if user:
+            # Mettre à jour les informations de l'utilisateur
+            user.nom = self.nom_entry.get()
+            user.prenom = self.prenom_entry.get()
+            user.date_naissance = self.date_naissance_entry.get()
+            user.telephone = self.telephone_entry.get()
+            user.email = self.email_entry.get()
+            user.adresse = self.adresse_entry.get()
+            
+            # Mettre à jour la last_activity_date
+            user.last_activity_date = datetime.now().strftime("%Y-%m-%d")
+            
+            user.save(self.db_manager)
+            messagebox.showinfo("Mise à jour", "Les informations de l'utilisateur ont été mises à jour.")
+            self.update_user_list()
+        else:
+            messagebox.showerror("Erreur", "Utilisateur non trouvé.")

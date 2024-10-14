@@ -1,56 +1,44 @@
 from dateutil import parser
 from datetime import datetime
+import re
 
 def convert_to_db_date(date_string):
     """
-    Convertit une chaîne de date en format de date pour la base de données (YYYY-MM-DD).
-    
-    Args:
-    date_string (str): La chaîne de date à convertir.
-    
-    Returns:
-    str: La date au format YYYY-MM-DD, ou None si la conversion échoue.
+    Convertit une date du format DD/MM/YYYY au format YYYY-MM-DD.
     """
-    try:
-        # Essayer de parser la chaîne de date
-        parsed_date = parser.parse(date_string, dayfirst=True)
-        
-        # Convertir la date parsée en format YYYY-MM-DD
-        return parsed_date.strftime("%Y-%m-%d")
-    except ValueError:
-        # print(f"Impossible de convertir la date : {date_string}")  # Commentez ou supprimez cette ligne
+    if not date_string:
         return None
+    if not is_valid_date(date_string):
+        return date_string  # Retourner la date telle quelle si elle n'est pas au format DD/MM/YYYY
+    day, month, year = date_string.split('/')
+    return f"{year}-{month}-{day}"
 
 def convert_from_db_date(db_date):
     """
-    Convertit une date en format de base de données (YYYY-MM-DD) en format JJ/MM/AAAA.
-    
-    Args:
-    db_date (str): La date en format YYYY-MM-DD.
-    
-    Returns:
-    str: La date en format JJ/MM/AAAA, ou None si la conversion échoue.
+    Convertit une date du format YYYY-MM-DD ou DD/MM/YYYY au format DD/MM/YYYY.
     """
     try:
-        # Convertir la date en format JJ/MM/AAAA
-        return datetime.strptime(db_date, "%Y-%m-%d").strftime("%d/%m/%Y")
+        # Essaie d'abord le format YYYY-MM-DD
+        return datetime.strptime(db_date, '%Y-%m-%d').strftime('%d/%m/%Y')
     except ValueError:
-        # Si la conversion échoue, retourner None
-        print(f"Impossible de convertir la date de la base de données : {db_date}")
-        return None
+        try:
+            # Si ça échoue, essaie le format DD/MM/YYYY
+            datetime.strptime(db_date, '%d/%m/%Y')
+            return db_date  # La date est déjà au bon format
+        except ValueError:
+            raise ValueError("Format de date invalide. Utilisez YYYY-MM-DD ou DD/MM/YYYY.")
 
 def is_valid_date(date_string):
     """
-    Vérifie si une chaîne peut être convertie en date valide.
-    
-    Args:
-    date_string (str): La chaîne de date à vérifier.
-    
-    Returns:
-    bool: True si la chaîne est une date valide, False sinon.
+    Vérifie si la chaîne de date est au format DD/MM/YYYY et représente une date valide.
     """
+    # Vérifie d'abord le format avec une expression régulière
+    if not re.match(r'^\d{2}/\d{2}/\d{4}$', date_string):
+        return False
+    
+    # Essaie de convertir la chaîne en objet date
     try:
-        parser.parse(date_string, dayfirst=True)
+        datetime.strptime(date_string, '%d/%m/%Y')
         return True
     except ValueError:
         return False

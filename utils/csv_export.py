@@ -1,20 +1,32 @@
 import csv
+import logging
 from tkinter import filedialog
-from utils.date_utils import convert_from_db_date
+from utils.date_utils import convert_from_db_date, is_valid_date
+import os
+from datetime import datetime
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    filename='app.log',
+                    filemode='w')
 
 class CSVExporter:
+    export_dir = None  # Ajoutez cet attribut de classe
+
     def __init__(self, db_manager):
         self.db_manager = db_manager
 
     def export_users(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".csv",
-                                                 filetypes=[("CSV files", "*.csv")],
-                                                 title="Exporter les utilisateurs")
+        file_path = os.path.join(self.export_dir, f"users_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         if not file_path:
             return False, "L'exportation des utilisateurs a été annulée."
 
         try:
             users = self.db_manager.get_all_users()
+            logging.info(f"Nombre d'utilisateurs récupérés : {len(users)}")
+            for user in users:
+                logging.debug(f"Utilisateur : {vars(user)}")
+
             with open(file_path, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
                 writer.writerow(['ID', 'Nom', 'Prénom', 'Date de naissance', 'Téléphone', 'Email', 'Adresse', 'Date de création'])
@@ -29,22 +41,25 @@ class CSVExporter:
                         user.adresse,
                         convert_from_db_date(user.date_creation)
                     ])
-            return True, f"Les données des utilisateurs ont été exportées avec succès dans {file_path}"
+            return True, file_path
         except Exception as e:
+            logging.error(f"Erreur lors de l'exportation des utilisateurs : {str(e)}", exc_info=True)
             return False, f"Une erreur s'est produite lors de l'exportation des utilisateurs : {str(e)}"
 
     def export_workshops(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".csv",
-                                                 filetypes=[("CSV files", "*.csv")],
-                                                 title="Exporter les ateliers")
+        file_path = os.path.join(self.export_dir, f"workshops_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         if not file_path:
             return False, "L'exportation des ateliers a été annulée."
 
         try:
             workshops = self.db_manager.get_all_workshops()
+            logging.info(f"Nombre d'ateliers récupérés : {len(workshops)}")
+            for workshop in workshops:
+                logging.debug(f"Atelier : {vars(workshop)}")
+
             with open(file_path, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(['ID', 'ID Usager', 'Description', 'Catégorie', 'Payant', 'Date', 'Conseiller'])
+                writer.writerow(['ID', 'User ID', 'Description', 'Catégorie', 'Payant', 'Date', 'Conseiller'])
                 for workshop in workshops:
                     writer.writerow([
                         workshop.id,
@@ -55,8 +70,9 @@ class CSVExporter:
                         convert_from_db_date(workshop.date),
                         workshop.conseiller
                     ])
-            return True, f"Les données des ateliers ont été exportées avec succès dans {file_path}"
+            return True, file_path
         except Exception as e:
+            logging.error(f"Erreur lors de l'exportation des ateliers : {str(e)}", exc_info=True)
             return False, f"Une erreur s'est produite lors de l'exportation des ateliers : {str(e)}"
 
     def export_all_data(self):
@@ -94,14 +110,15 @@ class CSVExporter:
                         user.id,
                         user.nom,
                         user.prenom,
-                        convert_from_db_date(user.date_naissance) if user.date_naissance else '',
+                        user.date_naissance if user.date_naissance else '',
                         user.telephone,
                         user.email,
                         user.adresse,
-                        convert_from_db_date(user.date_creation)
+                        user.date_creation if user.date_creation else ''
                     ])
             return True, f"Les données des utilisateurs ont été exportées avec succès"
         except Exception as e:
+            logging.error(f"Erreur lors de l'exportation des utilisateurs : {str(e)}", exc_info=True)
             return False, f"Erreur lors de l'exportation des utilisateurs : {str(e)}"
 
     def export_workshops_to_file(self, file_path):
@@ -109,7 +126,7 @@ class CSVExporter:
             workshops = self.db_manager.get_all_workshops()
             with open(file_path, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(['ID', 'ID Usager', 'Description', 'Catégorie', 'Payant', 'Date', 'Conseiller'])
+                writer.writerow(['ID', 'User ID', 'Description', 'Catégorie', 'Payant', 'Date', 'Conseiller'])
                 for workshop in workshops:
                     writer.writerow([
                         workshop.id,
@@ -117,9 +134,10 @@ class CSVExporter:
                         workshop.description,
                         workshop.categorie,
                         'Oui' if workshop.payant else 'Non',
-                        convert_from_db_date(workshop.date),
+                        workshop.date if workshop.date else '',
                         workshop.conseiller
                     ])
             return True, f"Les données des ateliers ont été exportées avec succès"
         except Exception as e:
+            logging.error(f"Erreur lors de l'exportation des ateliers : {str(e)}", exc_info=True)
             return False, f"Erreur lors de l'exportation des ateliers : {str(e)}"

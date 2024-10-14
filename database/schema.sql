@@ -6,16 +6,17 @@ CREATE TABLE IF NOT EXISTS users (
     telephone TEXT NOT NULL,
     email TEXT,
     adresse TEXT,
-    date_creation TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    date_creation TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    last_activity_date TEXT
 );
 
 CREATE TABLE IF NOT EXISTS workshops (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER,
     description TEXT,
-    categorie TEXT NOT NULL,
-    payant BOOLEAN NOT NULL DEFAULT 0,
-    date TEXT NOT NULL,
-    conseiller TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    categorie TEXT,
+    payant BOOLEAN,
+    date TEXT,
+    conseiller TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );

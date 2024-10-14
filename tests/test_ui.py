@@ -27,8 +27,18 @@ class TestUI(BaseTestCase):
     def tearDown(self):
         super().tearDown()
         if self.root:
-            self.root.update()
             self.root.destroy()
+
+    def test_main_window_creation(self):
+        self.assertIsInstance(self.main_window, MainWindow)
+
+    def test_user_management_creation(self):
+        user_management = UserManagement(self.main_window, self.db_manager, lambda: None)
+        self.assertIsInstance(user_management, UserManagement)
+
+    def test_add_user_creation(self):
+        add_user = AddUser(self.main_window, self.db_manager, lambda: None)
+        self.assertIsInstance(add_user, AddUser)
 
     def test_with_timeout(self, seconds=5):
         def test_function():

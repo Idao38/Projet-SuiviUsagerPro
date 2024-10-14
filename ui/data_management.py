@@ -4,11 +4,15 @@ from utils.rgpd_manager import RGPDManager
 from utils.csv_export import CSVExporter
 from models.user import User
 from datetime import timedelta
+import csv
+import os
+from datetime import datetime
 
 class DataManagement(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
+        self.csv_exporter = CSVExporter(self.db_manager)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -75,27 +79,45 @@ class DataManagement(ctk.CTkFrame):
             messagebox.showinfo("Suppression", f"L'usager {user.nom} {user.prenom} a été supprimé.")
             self.manage_rgpd()
 
-    def delete_all_inactive_users(self):
-        if messagebox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tous les usagers inactifs depuis plus d'un an ?"):
-            User.delete_inactive_users(self.db_manager, timedelta(days=365))
-            messagebox.showinfo("Suppression", "Tous les usagers inactifs ont été supprimés.")
-            self.manage_rgpd()
+    def delete_all_inactive_users(self, inactivity_period):
+        inactive_users = User.get_inactive_users(self.db_manager, inactivity_period)
+        deleted_count = 0
+        for user in inactive_users:
+            success = self.delete_inactive_user(user)
+            if success:
+                deleted_count += 1
+        
+        if deleted_count > 0:
+            return True, f"{deleted_count} utilisateur(s) inactif(s) ont été supprimés."
+        else:
+            return False, "Aucun utilisateur inactif n'a été trouvé ou supprimé."
 
     def export_csv(self):
-        exporter = CSVExporter(self.db_manager)
         export_type = self.export_var.get()
-
         if export_type == "Utilisateurs":
-            success, message = exporter.export_users()
+            success, message = self.csv_exporter.export_users()
         elif export_type == "Ateliers":
-            success, message = exporter.export_workshops()
+            success, message = self.csv_exporter.export_workshops()
         elif export_type == "Toutes les données":
-            success, message = exporter.export_all_data()
+            success, message = self.csv_exporter.export_all_data()
         else:
-            messagebox.showerror("Erreur", "Type d'exportation non reconnu.")
-            return
+            return False, "Type d'exportation non reconnu"
 
         if success:
             messagebox.showinfo("Exportation réussie", message)
         else:
             messagebox.showerror("Erreur d'exportation", message)
+        return success, message
+
+    def export_all_data(self):
+        success_users, message_users = self.export_users()
+        success_workshops, message_workshops = self.export_workshops()
+        
+        if success_users and success_workshops:
+            return True, f"Exportation réussie : {message_users} et {message_workshops}"
+        elif success_users:
+            return False, f"Exportation partielle : {message_users} mais échec pour les ateliers : {message_workshops}"
+        elif success_workshops:
+            return False, f"Exportation partielle : {message_workshops} mais échec pour les utilisateurs : {message_users}"
+        else:
+            return False, f"Échec de l'exportation : {message_users} et {message_workshops}"

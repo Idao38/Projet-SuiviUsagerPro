@@ -1,6 +1,7 @@
 from utils.date_utils import convert_to_db_date, convert_from_db_date
 from datetime import datetime
 import logging
+from models.user import User
 
 class Workshop:
     def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, date=None, conseiller=None):
@@ -9,12 +10,20 @@ class Workshop:
         self.description = description
         self.categorie = categorie
         self.payant = payant
-        self.date = convert_to_db_date(date) if date else datetime.now().strftime("%Y-%m-%d")
+        self.date = date  # Ne pas convertir ici
         self.conseiller = conseiller
 
     @classmethod
     def from_db(cls, row):
-        return cls(*row)
+        return cls(
+            id=row['id'],
+            user_id=row['user_id'] if row['user_id'] is not None else None,
+            description=row['description'],
+            categorie=row['categorie'],
+            payant=row['payant'],
+            date=row['date'],
+            conseiller=row['conseiller']
+        )
 
     def to_dict(self):
         return {
@@ -28,6 +37,8 @@ class Workshop:
         }
 
     def save(self, db_manager):
+        if self.date is None:
+            self.date = datetime.now().strftime("%d/%m/%Y")
         if self.id is None:
             query = """
             INSERT INTO workshops (user_id, description, categorie, payant, date, conseiller)
@@ -46,6 +57,14 @@ class Workshop:
             cursor = db_manager.execute(query, params)
             if self.id is None:
                 self.id = cursor.lastrowid
+            
+            # Mise à jour de la date de dernière activité de l'utilisateur
+            if self.user_id:
+                user = User.get_by_id(db_manager, self.user_id)
+                if user:
+                    user.last_activity_date = self.date
+                    user.save(db_manager)
+            
             return self.id
         except Exception as e:
             logging.error(f"Error saving workshop: {e}")
@@ -54,14 +73,18 @@ class Workshop:
     @staticmethod
     def get_all(db_manager):
         query = "SELECT * FROM workshops"
-        rows = db_manager.fetch_all(query)
-        return [Workshop.from_db(row) for row in rows]
+        return db_manager.fetch_all(query)
 
     @staticmethod
     def get_by_id(db_manager, workshop_id):
         query = "SELECT * FROM workshops WHERE id = ?"
         row = db_manager.fetch_one(query, (workshop_id,))
-        return Workshop.from_db(row) if row else None
+        if row:
+            workshop = Workshop.from_db(row)
+            if workshop.user_id is None:
+                workshop.user_id = None
+            return workshop
+        return None
 
     @staticmethod
     def get_by_user(db_manager, user_id):
@@ -72,7 +95,7 @@ class Workshop:
     @classmethod
     def delete(cls, db_manager, workshop_id):
         query = "DELETE FROM workshops WHERE id = ?"
-        db_manager.execute_query(query, (workshop_id,))
+        db_manager.execute(query, (workshop_id,))
 
     @classmethod
     def get_all_with_users(cls, db_manager):
@@ -85,17 +108,17 @@ class Workshop:
         """
         try:
             results = db_manager.fetch_all(query)
-            logging.debug(f"Fetched results: {results}")  # Ajoutez cette ligne
+            logging.debug(f"Fetched results: {results}")
             workshops = []
             for row in results:
-                logging.debug(f"Processing row: {row}")  # Ajoutez cette ligne
+                logging.debug(f"Processing row: {row}")
                 workshop = cls(
                     id=row['id'],
                     user_id=row['user_id'],
                     description=row['description'],
                     categorie=row['categorie'],
                     payant=row['payant'],
-                    date=row['date'],
+                    date=convert_from_db_date(row['date']),  # Convertir la date du format DB au format DD/MM/YYYY
                     conseiller=row['conseiller']
                 )
                 workshop.user_nom = row['nom']
@@ -104,5 +127,11 @@ class Workshop:
             return workshops
         except Exception as e:
             logging.error(f"Error fetching workshops with users: {e}")
-            logging.exception("Detailed error:")  # Ajoutez cette ligne pour voir la trace complète
+            logging.exception("Detailed error:")
             return []
+
+    @staticmethod
+    def get_orphan_workshops(db_manager):
+        query = "SELECT * FROM workshops WHERE user_id IS NULL"
+        rows = db_manager.fetch_all(query)
+        return [Workshop.from_db(row) for row in rows]

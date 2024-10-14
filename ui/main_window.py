@@ -1,7 +1,14 @@
 import os
 import customtkinter as ctk
 from tkinter import messagebox
-from config import get_conseillers, get_current_conseiller, set_current_conseiller, add_conseiller, get_dark_mode, set_dark_mode
+from utils.config_utils import (
+    get_conseillers,
+    get_current_conseiller,
+    set_current_conseiller,
+    add_conseiller,
+    get_dark_mode,
+    set_dark_mode
+)
 from database.db_manager import DatabaseManager
 from .dashboard import Dashboard
 from .add_user import AddUser
@@ -141,13 +148,18 @@ class MainWindow(ctk.CTkFrame):
 
     def search_users(self, event=None):
         search_term = self.search_entry.get()
-        if search_term:
+        try:
             users = self.db_manager.search_users(search_term)
-            self.show_user_management()
-            self.user_management.display_search_results(users)
-        else:
-            self.show_user_management()
-            self.user_management.load_users()
+            if hasattr(self, 'user_management') and isinstance(self.user_management, UserManagement):
+                self.user_management.display_search_results(users)
+            else:
+                print("Le widget user_management n'existe pas ou n'est pas du bon type.")
+                # Recréez le widget user_management si nécessaire
+                self.show_user_management()
+                if hasattr(self, 'user_management'):
+                    self.user_management.display_search_results(users)
+        except Exception as e:
+            print(f"Erreur lors de la recherche d'utilisateurs : {e}")
 
     def show_dashboard(self):
         self.clear_main_content()
@@ -212,9 +224,16 @@ class MainWindow(ctk.CTkFrame):
         self.master.destroy()
 
     def update_all_sections(self):
-        self.dashboard.update()
-        self.user_management.load_users()
-        self.workshop_history.load_history()
+        try:
+            if hasattr(self, 'dashboard') and self.dashboard.winfo_exists():
+                self.dashboard.update()
+            if hasattr(self, 'user_management') and self.user_management.winfo_exists():
+                self.user_management.load_users()
+            if hasattr(self, 'workshop_history') and self.workshop_history.winfo_exists():
+                self.workshop_history.load_history()
+        except Exception as e:
+            print(f"Erreur lors de la mise à jour des sections : {e}")
+            # Vous pouvez également afficher un message d'erreur à l'utilisateur ici
 
     def update_appearance(self):
         is_dark = get_dark_mode()
@@ -265,3 +284,8 @@ class MainWindow(ctk.CTkFrame):
         )
         self.user_edit.pack(fill="both", expand=True)
         self.current_frame = self.user_edit  # Ajoutez cette ligne
+
+    def show_add_workshop(self, user):
+        self.clear_main_content()
+        self.add_workshop = AddWorkshop(self.main_content, self.db_manager, user, lambda: self.show_user_edit(user), self.update_all_sections)
+        self.add_workshop.pack(fill="both", expand=True)

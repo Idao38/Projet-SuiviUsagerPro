@@ -1,6 +1,7 @@
 from datetime import datetime
 from utils.csv_export import CSVExporter
 from utils.date_utils import convert_to_db_date, convert_from_db_date
+from models.user import User
 
 
 class RGPDManager:
@@ -10,23 +11,25 @@ class RGPDManager:
     def get_inactive_users(self, inactivity_period):
         cutoff_date = datetime.now() - inactivity_period
         query = """
-        SELECT u.*, MAX(DATE(w.date)) as last_activity_date FROM users u
+        SELECT u.*, MAX(COALESCE(w.date, u.date_creation)) as last_activity_date FROM users u
         LEFT JOIN workshops w ON u.id = w.user_id
         GROUP BY u.id
         HAVING last_activity_date < ? OR last_activity_date IS NULL
         """
-        return self.db_manager.fetch_all(query, (convert_to_db_date(cutoff_date.strftime("%d/%m/%Y")),))
+        rows = self.db_manager.fetch_all(query, (convert_to_db_date(cutoff_date.strftime("%d/%m/%Y")),))
+        return [User.from_db(row) for row in rows]
 
     def delete_inactive_user(self, user):
-        # Supprimer d'abord les ateliers associés à l'utilisateur
-        self.db_manager.execute("DELETE FROM workshops WHERE user_id = ?", (user.id,))
-        # Ensuite, supprimer l'utilisateur
-        self.db_manager.execute("DELETE FROM users WHERE id = ?", (user.id,))
+        # Mettre à jour les ateliers associés
+        self.db_manager.execute("UPDATE workshops SET user_id = NULL WHERE user_id = ?", (user.id,))
+        # Supprimer l'utilisateur
+        User.delete(self.db_manager, user.id)
 
     def delete_all_inactive_users(self, inactivity_period):
-        inactive_users = self.get_inactive_users(inactivity_period)
+        inactive_users = User.get_inactive_users(self.db_manager, inactivity_period)
         for user in inactive_users:
             self.delete_inactive_user(user)
+        return len(inactive_users)
 
     def export_inactive_users(self, inactivity_period, filename):
         inactive_users = self.get_inactive_users(inactivity_period)
