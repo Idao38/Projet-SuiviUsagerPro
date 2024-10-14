@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from models.user import User
 from utils.date_utils import convert_to_db_date, convert_from_db_date, is_valid_date
+from datetime import datetime
 
 class UserEditFrame(ctk.CTkFrame):
     def __init__(self, master, db_manager, user, show_user_management_callback, show_add_workshop_callback, update_callback, **kwargs):
@@ -98,6 +99,7 @@ class UserEditFrame(ctk.CTkFrame):
         self.user.date_naissance = date_naissance
         self.user.email = email
         self.user.adresse = adresse
+        self.user.last_activity_date = datetime.now().strftime("%Y-%m-%d")
 
         # Sauvegarder les modifications
         self.user.save(self.db_manager)

@@ -10,8 +10,8 @@ class BaseTestCase(unittest.TestCase):
         cls.db_manager = DatabaseManager(cls.db_path)
 
     def setUp(self):
-        # Pas besoin de réinitialiser la base de données ici, car elle est déjà configurée
-        pass
+        self.db_manager = DatabaseManager(os.environ['TEST_DB_PATH'])
+        self.addCleanup(self.db_manager.close)
 
     def tearDown(self):
         # Nettoyage après chaque test si nécessaire

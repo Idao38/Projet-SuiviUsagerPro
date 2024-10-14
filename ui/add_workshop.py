@@ -3,12 +3,15 @@ from tkinter import messagebox
 from models.workshop import Workshop
 from utils.date_utils import is_valid_date, convert_to_db_date, get_current_date
 from config import get_current_conseiller
+from models.user import User
+import logging
 
 WORKSHOP_TYPES = ["Atelier numérique", "Démarche administrative"]
 
 class AddWorkshop(ctk.CTkFrame):
-    def __init__(self, master, db_manager, user, show_user_edit_callback, update_callback, **kwargs):
-        super().__init__(master, **kwargs)
+    def __init__(self, master, db_manager, user, show_user_edit_callback, update_callback):
+        logging.debug(f"Initialisation de AddWorkshop avec user: {user}")
+        super().__init__(master)
         self.db_manager = db_manager
         self.user = user
         self.show_user_edit_callback = show_user_edit_callback
@@ -59,6 +62,7 @@ class AddWorkshop(ctk.CTkFrame):
         dropdown.grid(row=row, column=1, padx=20, pady=(10, 0), sticky="ew")
 
     def add_workshop(self):
+        logging.debug("Début de la méthode add_workshop")
         date = convert_to_db_date(self.date_entry.get())
         categorie = self.workshop_type_var.get()
         conseiller = self.conseiller_entry.get()
@@ -73,8 +77,19 @@ class AddWorkshop(ctk.CTkFrame):
                                 conseiller=conseiller, payant=payant, description=description)
         try:
             new_workshop.save(self.db_manager)
+            logging.debug("Atelier sauvegardé avec succès")
             messagebox.showinfo("Succès", "L'atelier a été ajouté avec succès.")
+            logging.debug("Message de succès affiché")
+            
+            logging.debug("Appel de update_callback")
             self.update_callback()
-            self.show_user_edit_callback(self.user)
+            logging.debug("update_callback terminé")
+            
+            logging.debug("Appel de show_user_edit_callback")
+            self.show_user_edit_callback()
+            logging.debug("show_user_edit_callback terminé")
         except Exception as e:
+            logging.error(f"Erreur lors de l'ajout de l'atelier : {e}")
             messagebox.showerror("Erreur", f"Impossible d'ajouter l'atelier : {str(e)}")
+        
+        logging.debug("Fin de la méthode add_workshop")

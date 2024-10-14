@@ -1,18 +1,20 @@
+import csv
+import os
 import customtkinter as ctk
 from tkinter import messagebox
 from utils.rgpd_manager import RGPDManager
 from utils.csv_export import CSVExporter
 from models.user import User
 from datetime import timedelta
-import csv
-import os
 from datetime import datetime
+from config import get_inactivity_period
 
 class DataManagement(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.csv_exporter = CSVExporter(self.db_manager)
+        self.rgpd_manager = RGPDManager(self.db_manager)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -51,7 +53,8 @@ class DataManagement(ctk.CTkFrame):
         return frame
 
     def manage_rgpd(self):
-        inactive_users = User.get_inactive_users(self.db_manager, timedelta(days=365))
+        inactivity_period = int(get_inactivity_period())  
+        inactive_users = self.rgpd_manager.get_inactive_users(inactivity_period)
         if not inactive_users:
             messagebox.showinfo("Information", "Aucun usager inactif depuis plus d'un an.")
             return
@@ -75,22 +78,19 @@ class DataManagement(ctk.CTkFrame):
 
     def delete_inactive_user(self, user):
         if messagebox.askyesno("Confirmation", f"Êtes-vous sûr de vouloir supprimer définitivement l'usager {user.nom} {user.prenom} ?"):
-            user.delete(self.db_manager)
+            self.rgpd_manager.delete_inactive_user(user)
             messagebox.showinfo("Suppression", f"L'usager {user.nom} {user.prenom} a été supprimé.")
-            self.manage_rgpd()
+            self.manage_rgpd()  # Rafraîchir l'affichage
 
-    def delete_all_inactive_users(self, inactivity_period):
-        inactive_users = User.get_inactive_users(self.db_manager, inactivity_period)
-        deleted_count = 0
-        for user in inactive_users:
-            success = self.delete_inactive_user(user)
-            if success:
-                deleted_count += 1
-        
-        if deleted_count > 0:
-            return True, f"{deleted_count} utilisateur(s) inactif(s) ont été supprimés."
-        else:
-            return False, "Aucun utilisateur inactif n'a été trouvé ou supprimé."
+    def delete_all_inactive_users(self):
+        inactivity_period = int(get_inactivity_period())
+        if messagebox.askyesno("Confirmation", "Êtes-vous sûr de vouloir supprimer tous les usagers inactifs ?"):
+            deleted_count = self.rgpd_manager.delete_all_inactive_users(inactivity_period)
+            if deleted_count > 0:
+                messagebox.showinfo("Suppression", f"{deleted_count} utilisateur(s) inactif(s) ont été supprimés.")
+            else:
+                messagebox.showinfo("Information", "Aucun utilisateur inactif n'a été trouvé ou supprimé.")
+            self.manage_rgpd()  # Rafraîchir l'affichage
 
     def export_csv(self):
         export_type = self.export_var.get()
@@ -112,6 +112,8 @@ class DataManagement(ctk.CTkFrame):
             messagebox.showinfo("Exportation annulée", message)
         else:
             messagebox.showerror("Erreur d'exportation", "Une erreur s'est produite lors de l'exportation")
+        
+        return success
 
     def export_all_data(self):
         success_users, message_users = self.export_users()

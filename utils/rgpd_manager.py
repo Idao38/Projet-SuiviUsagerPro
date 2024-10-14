@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.csv_export import CSVExporter
 from utils.date_utils import convert_to_db_date, convert_from_db_date
 from models.user import User
@@ -8,8 +8,8 @@ class RGPDManager:
     def __init__(self, db_manager):
         self.db_manager = db_manager
 
-    def get_inactive_users(self, inactivity_period):
-        cutoff_date = datetime.now() - inactivity_period
+    def get_inactive_users(self, inactivity_period_days):
+        cutoff_date = datetime.now() - timedelta(days=inactivity_period_days)
         query = """
         SELECT u.*, MAX(COALESCE(w.date, u.date_creation)) as last_activity_date FROM users u
         LEFT JOIN workshops w ON u.id = w.user_id
@@ -25,12 +25,12 @@ class RGPDManager:
         # Supprimer l'utilisateur
         User.delete(self.db_manager, user.id)
 
-    def delete_all_inactive_users(self, inactivity_period):
-        inactive_users = User.get_inactive_users(self.db_manager, inactivity_period)
+    def delete_all_inactive_users(self, inactivity_period_days):
+        inactive_users = self.get_inactive_users(inactivity_period_days)
         for user in inactive_users:
             self.delete_inactive_user(user)
         return len(inactive_users)
 
-    def export_inactive_users(self, inactivity_period, filename):
-        inactive_users = self.get_inactive_users(inactivity_period)
+    def export_inactive_users(self, inactivity_period_days, filename):
+        inactive_users = self.get_inactive_users(inactivity_period_days)
         CSVExporter.export_users(inactive_users, filename)

@@ -47,7 +47,7 @@ class UserManagement(ctk.CTkFrame):
             user_frame = ctk.CTkFrame(self.user_list)
             user_frame.pack(fill="x", padx=5, pady=5)
 
-            name_label = ctk.CTkLabel(user_frame, text=f"{user.nom} {user.prenom}")
+            name_label = ctk.CTkLabel(user_frame, text=f"{user.nom} {user.prenom} - Dernière activité: {user.last_activity_date or 'N/A'}")
             name_label.pack(side="left", padx=5)
 
             # Bouton de suppression

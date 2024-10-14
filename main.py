@@ -4,8 +4,13 @@ from database.db_manager import DatabaseManager
 from config import get_dark_mode
 from theme import set_dark_theme, set_light_theme
 import os
+import logging
+
 
 VERSION = "0.6.0"
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 def main():
     # Initialiser le mode d'apparence en fonction de la configuration

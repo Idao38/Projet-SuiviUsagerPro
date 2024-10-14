@@ -1,6 +1,7 @@
 from utils.date_utils import convert_to_db_date, convert_from_db_date
 from datetime import datetime
 import logging
+from datetime import timedelta
 
 class User:
     def __init__(self, id=None, nom="", prenom="", date_naissance=None, telephone="", email=None, adresse=None, date_creation=None, last_activity_date=None):
@@ -78,9 +79,9 @@ class User:
             return cls(**user_dict)
         return None
 
-    @staticmethod
-    def get_inactive_users(db_manager, inactivity_period):
-        cutoff_date = datetime.now() - inactivity_period
+    @classmethod
+    def get_inactive_users(cls, db_manager, inactivity_days):
+        cutoff_date = datetime.now() - timedelta(days=inactivity_days)
         query = """
         SELECT u.*, MAX(COALESCE(w.date, u.date_creation)) as last_activity_date FROM users u
         LEFT JOIN workshops w ON u.id = w.user_id
@@ -88,7 +89,7 @@ class User:
         HAVING last_activity_date < ? OR last_activity_date IS NULL
         """
         rows = db_manager.fetch_all(query, (cutoff_date.strftime("%Y-%m-%d"),))
-        return [User.from_db(row) for row in rows]
+        return [cls.from_db(row) for row in rows]
 
     def delete(self, db_manager):
         query = "DELETE FROM users WHERE id = ?"

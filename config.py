@@ -36,3 +36,12 @@ def tearDown(self):
     if os.path.exists(self.test_config_file):
         os.remove(self.test_config_file)
     self.root.destroy()
+
+def get_inactivity_period():
+    config = load_config()
+    return config.get("inactivity_period", "12")  # Par défaut 12 mois
+
+def set_inactivity_period(period):
+    config = load_config()
+    config["inactivity_period"] = str(period)
+    save_config(config)

@@ -4,6 +4,8 @@ import os
 import logging
 from datetime import datetime
 import tempfile
+import time
+from contextlib import closing
 
 # Ajoutez le répertoire racine du projet au chemin d'importation
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -96,9 +98,20 @@ def run_tests():
         for test, failure in result.failures:
             logging.error(f"{test}: {failure}")
 
-    # Nettoyage : supprimez la base de données temporaire
-    os.unlink(db_path)
-
+    # Fermez explicitement la connexion à la base de données
+    db_manager.close()
+    
+    # Assurez-vous que toutes les connexions sont fermées
+    del db_manager
+    
+    # Ajoutez un petit délai pour laisser le temps au système de libérer le fichier
+    time.sleep(1)
+    
+    try:
+        os.unlink(db_path)
+    except PermissionError:
+        print(f"Impossible de supprimer {db_path}. Le fichier sera supprimé lors du prochain redémarrage.")
+    
     # Retournez le résultat des tests
     print(f"Les résultats des tests ont été enregistrés dans : {log_file}")
     return result

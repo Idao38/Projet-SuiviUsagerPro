@@ -48,3 +48,12 @@ def set_dark_mode(is_dark):
     config = load_config()
     config["dark_mode"] = is_dark
     save_config(config)
+
+def get_inactivity_period():
+    config = load_config()
+    return config.get("inactivity_period", "12")  # Par défaut 12 mois
+
+def set_inactivity_period(period):
+    config = load_config()
+    config["inactivity_period"] = str(period)
+    save_config(config)

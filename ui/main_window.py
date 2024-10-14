@@ -1,14 +1,7 @@
 import os
 import customtkinter as ctk
 from tkinter import messagebox
-from utils.config_utils import (
-    get_conseillers,
-    get_current_conseiller,
-    set_current_conseiller,
-    add_conseiller,
-    get_dark_mode,
-    set_dark_mode
-)
+from utils.config_utils import*
 from database.db_manager import DatabaseManager
 from .dashboard import Dashboard
 from .add_user import AddUser
@@ -19,6 +12,8 @@ from .data_management import DataManagement
 from .user_edit import UserEditFrame
 from theme import set_dark_theme, set_light_theme
 from .add_workshop import AddWorkshop
+
+import logging
 
 class MainWindow(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
@@ -187,7 +182,7 @@ class MainWindow(ctk.CTkFrame):
         self.clear_main_content()
         self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
         self.data_management.pack(fill="both", expand=True)
-        self.current_frame = self.data_management  # Ajoutez cette ligne
+        self.current_frame = self.data_management
 
     def show_settings(self):
         self.clear_main_content()
@@ -216,12 +211,15 @@ class MainWindow(ctk.CTkFrame):
 
     def clear_main_content(self):
         for widget in self.main_content.winfo_children():
+            if isinstance(widget, ctk.CTkOptionMenu):
+                widget.destroy()
             widget.destroy()
+        self.main_content.update()
 
     def hide_all_frames(self):
-        for frame in (self.dashboard, self.add_user, self.user_management, self.workshop_history, self.settings, self.data_management, getattr(self, 'user_edit', None)):
-            if frame:
-                frame.grid_forget()
+        for widget in self.winfo_children():
+            if isinstance(widget, ctk.CTkFrame) and widget != self:
+                widget.grid_remove()
 
     def on_closing(self):
         self.db_manager.close()
@@ -261,22 +259,36 @@ class MainWindow(ctk.CTkFrame):
         self.settings.update()
 
     def show_add_workshop(self, user):
+        logging.debug(f"Début de show_add_workshop avec user: {user}")
+        logging.debug(f"Type de user: {type(user)}")
+        logging.debug(f"Attributs de user: {vars(user)}")
+        
         self.clear_main_content()
-        self.add_workshop = AddWorkshop(
-            self.main_content,
-            self.db_manager,
-            user,
-            show_user_edit_callback=lambda: self.show_user_edit(user),
-            update_callback=self.update_all_sections
-        )
+        
+        logging.debug("Création de AddWorkshop")
+        try:
+            self.add_workshop = AddWorkshop(
+                self.main_content,
+                self.db_manager,
+                user,
+                show_user_edit_callback=lambda: self.show_user_edit(user),
+                update_callback=self.update_all_sections
+            )
+            logging.debug("AddWorkshop créé avec succès")
+        except Exception as e:
+            logging.error(f"Erreur lors de la création de AddWorkshop: {e}")
+            raise
+        
         self.add_workshop.pack(fill="both", expand=True)
         self.current_frame = self.add_workshop
+        logging.debug("Fin de show_add_workshop")
 
     def update_and_show_user_edit(self, user):
         self.update_all_sections()
         self.show_user_edit(user)
 
     def show_user_edit(self, user):
+        logging.debug(f"Début de show_user_edit avec user: {user}")
         self.clear_main_content()
         self.user_edit = UserEditFrame(
             self.main_content,
@@ -287,9 +299,5 @@ class MainWindow(ctk.CTkFrame):
             update_callback=self.update_all_sections
         )
         self.user_edit.pack(fill="both", expand=True)
-        self.current_frame = self.user_edit  # Ajoutez cette ligne
-
-    def show_add_workshop(self, user):
-        self.clear_main_content()
-        self.add_workshop = AddWorkshop(self.main_content, self.db_manager, user, lambda: self.show_user_edit(user), self.update_all_sections)
-        self.add_workshop.pack(fill="both", expand=True)
+        self.current_frame = self.user_edit
+        logging.debug("Fin de show_user_edit")

@@ -7,7 +7,9 @@ from utils.config_utils import (
     add_conseiller,
     remove_conseiller,
     get_dark_mode,
-    set_dark_mode
+    set_dark_mode,
+    get_inactivity_period,
+    set_inactivity_period
 )
 from theme import set_dark_theme, set_light_theme
 
@@ -51,6 +53,27 @@ class Settings(ctk.CTkFrame):
 
         self.remove_conseiller_button = ctk.CTkButton(self.settings_frame, text="Supprimer un conseiller", command=self.remove_conseiller)
         self.remove_conseiller_button.grid(row=4, column=0, padx=20, pady=10, sticky="w")
+        
+        # Paramètre de période d'inactivité
+        self.rgpd_label = ctk.CTkLabel(self.settings_frame, text="Paramètre RGPD", font=ctk.CTkFont(size=18, weight="bold"))
+        self.rgpd_label.grid(row=5, column=0, padx=20, pady=(20, 10), sticky="w")
+
+        # Créez un nouveau frame pour contenir le label et le menu
+        self.inactivity_frame = ctk.CTkFrame(self.settings_frame)
+        self.inactivity_frame.grid(row=6, column=0, padx=20, pady=10, sticky="ew")
+        self.inactivity_frame.grid_columnconfigure(1, weight=1)
+
+        self.inactivity_period_label = ctk.CTkLabel(self.inactivity_frame, text="Période d'inactivité :")
+        self.inactivity_period_label.grid(row=0, column=0, padx=(0, 10), pady=0, sticky="w")
+
+        self.inactivity_period_var = ctk.StringVar(value=get_inactivity_period())
+        self.inactivity_period_menu = ctk.CTkOptionMenu(
+            self.inactivity_frame,
+            values=["6", "12", "18", "24"],
+            variable=self.inactivity_period_var,
+            command=self.update_inactivity_period
+        )
+        self.inactivity_period_menu.grid(row=0, column=1, padx=0, pady=0, sticky="e")
 
     def toggle_dark_mode(self):
         is_dark = self.dark_mode_var.get() == "on"
@@ -84,6 +107,9 @@ class Settings(ctk.CTkFrame):
             messagebox.showinfo("Succès", f"Le conseiller {to_remove} a été supprimé.")
         else:
             messagebox.showerror("Erreur", f"Le conseiller {to_remove} n'existe pas.")
+
+    def update_inactivity_period(self, choice):
+        set_inactivity_period(int(choice))
 
     def update_appearance(self):
         # Cette méthode peut être vide pour le moment, elle sera utilisée pour mettre à jour l'apparence de la fenêtre principale

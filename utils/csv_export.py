@@ -1,6 +1,5 @@
 import csv
 import logging
-from tkinter import filedialog
 from utils.date_utils import convert_from_db_date, is_valid_date
 import os
 from datetime import datetime
@@ -11,19 +10,15 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 
 class CSVExporter:
+    export_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'exports')
+
     def __init__(self, db_manager):
         self.db_manager = db_manager
-        self.export_dir = None  # Initialisation de export_dir
+        if not os.path.exists(self.export_dir):
+            os.makedirs(self.export_dir)
 
     def export_users(self):
-        if self.export_dir is None:
-            self.export_dir = filedialog.askdirectory(title="Choisir le dossier pour l'exportation des utilisateurs")
-        if not self.export_dir:
-            return False, "L'exportation des utilisateurs a été annulée."
-
         file_path = os.path.join(self.export_dir, f"users_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
-        if not file_path:
-            return False, "L'exportation des utilisateurs a été annulée."
 
         try:
             users = self.db_manager.get_all_users()
@@ -51,14 +46,7 @@ class CSVExporter:
             return False, f"Une erreur s'est produite lors de l'exportation des utilisateurs : {str(e)}"
 
     def export_workshops(self):
-        if self.export_dir is None:
-            self.export_dir = filedialog.askdirectory(title="Choisir le dossier pour l'exportation des ateliers")
-        if not self.export_dir:
-            return False, "L'exportation des ateliers a été annulée."
-
         file_path = os.path.join(self.export_dir, f"workshops_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
-        if not file_path:
-            return False, "L'exportation des ateliers a été annulée."
 
         try:
             workshops = self.db_manager.get_all_workshops()
@@ -85,13 +73,9 @@ class CSVExporter:
             return False, f"Une erreur s'est produite lors de l'exportation des ateliers : {str(e)}"
 
     def export_all_data(self):
-        self.export_dir = filedialog.askdirectory(title="Choisir le dossier pour l'exportation de toutes les données")
-        if not self.export_dir:
-            return False, "L'exportation de toutes les données a été annulée."
-
         try:
-            users_file = f"{self.export_dir}/users_export.csv"
-            workshops_file = f"{self.export_dir}/workshops_export.csv"
+            users_file = os.path.join(self.export_dir, f"users_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+            workshops_file = os.path.join(self.export_dir, f"workshops_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
 
             users_success, users_message = self.export_users_to_file(users_file)
             workshops_success, workshops_message = self.export_workshops_to_file(workshops_file)
@@ -104,7 +88,6 @@ class CSVExporter:
                 return False, f"Exportation partielle : {workshops_message}. Erreur pour les utilisateurs : {users_message}"
             else:
                 return False, f"Échec de l'exportation : {users_message}, {workshops_message}"
-
         except Exception as e:
             return False, f"Une erreur s'est produite lors de l'exportation de toutes les données : {str(e)}"
 
@@ -125,7 +108,7 @@ class CSVExporter:
                         user.adresse,
                         user.date_creation if user.date_creation else ''
                     ])
-            return True, f"Les données des utilisateurs ont été exportées avec succès"
+            return True, f"Les données des utilisateurs ont été exportées avec succès dans {file_path}"
         except Exception as e:
             logging.error(f"Erreur lors de l'exportation des utilisateurs : {str(e)}", exc_info=True)
             return False, f"Erreur lors de l'exportation des utilisateurs : {str(e)}"
@@ -146,7 +129,7 @@ class CSVExporter:
                         workshop.date if workshop.date else '',
                         workshop.conseiller
                     ])
-            return True, f"Les données des ateliers ont été exportées avec succès"
+            return True, f"Les données des ateliers ont été exportées avec succès dans {file_path}"
         except Exception as e:
             logging.error(f"Erreur lors de l'exportation des ateliers : {str(e)}", exc_info=True)
             return False, f"Erreur lors de l'exportation des ateliers : {str(e)}"

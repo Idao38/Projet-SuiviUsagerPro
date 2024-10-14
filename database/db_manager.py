@@ -116,11 +116,11 @@ class DatabaseManager:
             if 'last_activity_date' not in column_names:
                 query = "ALTER TABLE users ADD COLUMN last_activity_date TEXT;"
                 self.execute(query)
-                print("Colonne last_activity_date ajoutée avec succès.")
+                logging.info("Colonne last_activity_date ajoutée avec succès.")
             else:
-                print("La colonne last_activity_date existe déjà.")
+                logging.info("La colonne last_activity_date existe déjà.")
         except Exception as e:
-            print(f"Erreur lors de la vérification/ajout de la colonne last_activity_date : {e}")
+            logging.error(f"Erreur lors de la vérification/ajout de la colonne last_activity_date : {e}")
 
 def initialize(self):
     try:
