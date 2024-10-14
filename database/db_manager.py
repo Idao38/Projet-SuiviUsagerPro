@@ -126,7 +126,7 @@ def initialize(self):
     try:
         with self.get_connection() as conn:
             self.create_tables(conn)
-            self.add_last_activity_date_column()  # Ajoutez cette ligne
+            self.add_last_activity_date_column() 
         logging.info(f"Database initialized successfully: {self.db_path}")
     except Exception as e:
         logging.error(f"Error initializing database: {e}")

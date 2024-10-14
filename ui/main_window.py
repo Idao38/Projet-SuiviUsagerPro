@@ -150,28 +150,32 @@ class MainWindow(ctk.CTkFrame):
         search_term = self.search_entry.get()
         try:
             users = self.db_manager.search_users(search_term)
-            if hasattr(self, 'user_management') and isinstance(self.user_management, UserManagement):
+            
+            # Vérifiez si le widget user_management existe et est visible
+            if not hasattr(self, 'user_management') or not self.user_management.winfo_exists():
+                self.show_user_management()
+            
+            # Assurez-vous que user_management est une instance valide avant d'appeler display_search_results
+            if isinstance(self.user_management, UserManagement):
                 self.user_management.display_search_results(users)
             else:
-                print("Le widget user_management n'existe pas ou n'est pas du bon type.")
-                # Recréez le widget user_management si nécessaire
-                self.show_user_management()
-                if hasattr(self, 'user_management'):
-                    self.user_management.display_search_results(users)
+                print("Le widget user_management n'est pas une instance valide de UserManagement")
         except Exception as e:
             print(f"Erreur lors de la recherche d'utilisateurs : {e}")
+            import traceback
+            traceback.print_exc()
 
     def show_dashboard(self):
         self.clear_main_content()
         self.dashboard = Dashboard(self.main_content, self.db_manager)
         self.dashboard.pack(fill="both", expand=True)
-        self.current_frame = self.dashboard  # Ajoutez cette ligne
+        self.current_frame = self.dashboard
 
     def show_user_management(self):
         self.clear_main_content()
         self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, edit_user_callback=self.edit_user)
         self.user_management.pack(fill="both", expand=True)
-        self.current_frame = self.user_management  # Ajoutez cette ligne
+        self.current_frame = self.user_management
 
     def show_workshop_history(self):
         self.clear_main_content()

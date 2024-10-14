@@ -94,6 +94,8 @@ class DataManagement(ctk.CTkFrame):
 
     def export_csv(self):
         export_type = self.export_var.get()
+        success, message = False, ""
+        
         if export_type == "Utilisateurs":
             success, message = self.csv_exporter.export_users()
         elif export_type == "Ateliers":
@@ -101,13 +103,15 @@ class DataManagement(ctk.CTkFrame):
         elif export_type == "Toutes les données":
             success, message = self.csv_exporter.export_all_data()
         else:
-            return False, "Type d'exportation non reconnu"
+            messagebox.showerror("Erreur", "Type d'exportation non reconnu")
+            return
 
         if success:
             messagebox.showinfo("Exportation réussie", message)
+        elif message:  # Si un message est retourné mais success est False
+            messagebox.showinfo("Exportation annulée", message)
         else:
-            messagebox.showerror("Erreur d'exportation", message)
-        return success, message
+            messagebox.showerror("Erreur d'exportation", "Une erreur s'est produite lors de l'exportation")
 
     def export_all_data(self):
         success_users, message_users = self.export_users()

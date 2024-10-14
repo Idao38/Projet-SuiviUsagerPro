@@ -62,6 +62,12 @@ class UserManagement(ctk.CTkFrame):
         self.edit_user_callback(user)
 
     def display_search_results(self, users):
+        # Vérifier si le widget user_list existe toujours
+        if not hasattr(self, 'user_list') or not self.user_list.winfo_exists():
+            # Recréer le widget user_list s'il n'existe plus
+            self.user_list = ctk.CTkScrollableFrame(self)
+            self.user_list.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
+
         # Effacer la liste actuelle
         for widget in self.user_list.winfo_children():
             widget.destroy()

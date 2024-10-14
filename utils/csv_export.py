@@ -11,12 +11,16 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 
 class CSVExporter:
-    export_dir = None  # Ajoutez cet attribut de classe
-
     def __init__(self, db_manager):
         self.db_manager = db_manager
+        self.export_dir = None  # Initialisation de export_dir
 
     def export_users(self):
+        if self.export_dir is None:
+            self.export_dir = filedialog.askdirectory(title="Choisir le dossier pour l'exportation des utilisateurs")
+        if not self.export_dir:
+            return False, "L'exportation des utilisateurs a été annulée."
+
         file_path = os.path.join(self.export_dir, f"users_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         if not file_path:
             return False, "L'exportation des utilisateurs a été annulée."
@@ -47,6 +51,11 @@ class CSVExporter:
             return False, f"Une erreur s'est produite lors de l'exportation des utilisateurs : {str(e)}"
 
     def export_workshops(self):
+        if self.export_dir is None:
+            self.export_dir = filedialog.askdirectory(title="Choisir le dossier pour l'exportation des ateliers")
+        if not self.export_dir:
+            return False, "L'exportation des ateliers a été annulée."
+
         file_path = os.path.join(self.export_dir, f"workshops_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         if not file_path:
             return False, "L'exportation des ateliers a été annulée."
@@ -76,19 +85,19 @@ class CSVExporter:
             return False, f"Une erreur s'est produite lors de l'exportation des ateliers : {str(e)}"
 
     def export_all_data(self):
-        directory = filedialog.askdirectory(title="Choisir le dossier pour l'exportation")
-        if not directory:
+        self.export_dir = filedialog.askdirectory(title="Choisir le dossier pour l'exportation de toutes les données")
+        if not self.export_dir:
             return False, "L'exportation de toutes les données a été annulée."
 
         try:
-            users_file = f"{directory}/users_export.csv"
-            workshops_file = f"{directory}/workshops_export.csv"
+            users_file = f"{self.export_dir}/users_export.csv"
+            workshops_file = f"{self.export_dir}/workshops_export.csv"
 
             users_success, users_message = self.export_users_to_file(users_file)
             workshops_success, workshops_message = self.export_workshops_to_file(workshops_file)
 
             if users_success and workshops_success:
-                return True, f"Toutes les données ont été exportées avec succès dans {directory}"
+                return True, f"Toutes les données ont été exportées avec succès dans {self.export_dir}"
             elif users_success:
                 return False, f"Exportation partielle : {users_message}. Erreur pour les ateliers : {workshops_message}"
             elif workshops_success:
