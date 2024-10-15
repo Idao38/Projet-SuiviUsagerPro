@@ -13,40 +13,40 @@ class Dashboard(ctk.CTkFrame):
         if db_manager is None:
             raise ValueError("DatabaseManager ne peut pas être None")
         self.db_manager = db_manager
-        
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
 
         # Contenu du tableau de bord
         content_frame = ctk.CTkFrame(self)
-        content_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        content_frame.grid_rowconfigure(0, weight=1)
-        content_frame.grid_columnconfigure(0, weight=1)
+        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
         # Titre
         self.title = ctk.CTkLabel(content_frame, text="Tableau de bord", font=ctk.CTkFont(size=24, weight="bold"))
-        self.title.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
+        self.title.pack(anchor="w", padx=20, pady=(20, 10))
 
         # Statistiques
         self.stats_frame = ctk.CTkFrame(content_frame)
-        self.stats_frame.grid(row=1, column=0, padx=20, pady=10, sticky="nsew")
-        self.stats_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        self.stats_frame.pack(fill="x", padx=20, pady=10)
+        
+        stats_container = ctk.CTkFrame(self.stats_frame)
+        stats_container.pack(expand=True)
 
-        self.users_count_frame, self.users_count_label = self.create_stat_widget(self.stats_frame, "Nombre d'usagers", "0")
-        self.users_count_frame.grid(row=0, column=0, padx=10, pady=10)
+        # Utilisation de grid avec des poids pour répartir l'espace
+        stats_container.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
-        self.workshops_count_frame, self.workshops_count_label = self.create_stat_widget(self.stats_frame, "Nombre d'ateliers", "0")
-        self.workshops_count_frame.grid(row=0, column=1, padx=10, pady=10)
+        self.users_count_frame, self.users_count_label = self.create_stat_widget(stats_container, "Nombre d'usagers", "0")
+        self.users_count_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.active_users_frame, self.active_users_label = self.create_stat_widget(self.stats_frame, "Usagers actifs", "0")
-        self.active_users_frame.grid(row=0, column=2, padx=10, pady=10)
+        self.workshops_count_frame, self.workshops_count_label = self.create_stat_widget(stats_container, "Nombre d'ateliers", "0")
+        self.workshops_count_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
-        self.workshops_this_month_frame, self.workshops_this_month_label = self.create_stat_widget(self.stats_frame, "Ateliers ce mois", "0")
-        self.workshops_this_month_frame.grid(row=0, column=3, padx=10, pady=10)
+        self.active_users_frame, self.active_users_label = self.create_stat_widget(stats_container, "Usagers actifs", "0")
+        self.active_users_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
+        self.workshops_this_month_frame, self.workshops_this_month_label = self.create_stat_widget(stats_container, "Ateliers ce mois", "0")
+        self.workshops_this_month_frame.grid(row=0, column=3, padx=10, pady=10, sticky="nsew")
 
         # Graphique
         self.graph_frame = ctk.CTkFrame(content_frame)
-        self.graph_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+        self.graph_frame.pack(fill="both", expand=True, padx=20, pady=20)
         self.create_graph()
 
         self.update_stats()
