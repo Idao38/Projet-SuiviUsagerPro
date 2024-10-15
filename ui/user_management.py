@@ -11,6 +11,9 @@ class UserManagement(ctk.CTkFrame):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.edit_user_callback = edit_user_callback
+        self.users = []
+        self.offset = 0
+        self.limit = 25
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -23,6 +26,10 @@ class UserManagement(ctk.CTkFrame):
         self.user_list = ctk.CTkScrollableFrame(self)
         self.user_list.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
 
+        # Bouton pour charger plus d'utilisateurs
+        self.load_more_button = ctk.CTkButton(self, text="Charger plus", command=self.load_more_users)
+        self.load_more_button.grid(row=2, column=0, pady=(0, 20), sticky="ew")
+
         # Ajoutez cette ligne pour créer l'attribut search_entry
         self.search_entry = ctk.CTkEntry(self)
 
@@ -30,19 +37,19 @@ class UserManagement(ctk.CTkFrame):
         self.load_users()
 
     def load_users(self):
-        # Vérifier si le widget user_list existe toujours
-        if hasattr(self, 'user_list') and self.user_list.winfo_exists():
-            for widget in self.user_list.winfo_children():
-                widget.destroy()
-        else:
-            # Recréer le widget user_list s'il n'existe plus
-            self.user_list = ctk.CTkScrollableFrame(self)
-            self.user_list.grid(row=1, column=0, padx=20, pady=(0, 20), sticky="nsew")
+        new_users = User.get_paginated(self.db_manager, self.offset, self.limit)
+        self.users.extend(new_users)
+        self.display_users(new_users)
+        self.offset += self.limit
 
-        # Charger les usagers depuis la base de données
-        users = User.get_all(self.db_manager)
+        # Masquer le bouton si tous les utilisateurs sont chargés
+        if len(new_users) < self.limit:
+            self.load_more_button.grid_remove()
 
-        # Afficher chaque usager dans la liste
+    def load_more_users(self):
+        self.load_users()
+
+    def display_users(self, users):
         for user in users:
             user_frame = ctk.CTkFrame(self.user_list)
             user_frame.pack(fill="x", padx=5, pady=5)
@@ -57,6 +64,14 @@ class UserManagement(ctk.CTkFrame):
             # Bouton Ouvrir
             edit_button = ctk.CTkButton(user_frame, text="Ouvrir", command=lambda u=user: self.edit_user(u))
             edit_button.pack(side="right", padx=5)
+
+    def on_frame_configure(self, event):
+        self.user_list.configure(scrollregion=self.user_list.bbox("all"))
+
+    def on_mousewheel(self, event):
+        if self.user_list.winfo_height() < self.user_list.bbox("all")[3]:
+            if self.user_list.yview()[1] >= 0.9:
+                self.load_users()
 
     def edit_user(self, user):
         self.edit_user_callback(user)

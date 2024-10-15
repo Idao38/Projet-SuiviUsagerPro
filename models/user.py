@@ -132,3 +132,9 @@ class User:
         db_manager.execute("UPDATE workshops SET user_id = NULL WHERE user_id = ?", (user_id,))
         # Ensuite, supprimez l'utilisateur
         db_manager.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    @staticmethod
+    def get_paginated(db_manager, offset, limit):
+        query = "SELECT * FROM users ORDER BY nom, prenom LIMIT ? OFFSET ?"
+        rows = db_manager.fetch_all(query, (limit, offset))
+        return [User.from_db(row) for row in rows]

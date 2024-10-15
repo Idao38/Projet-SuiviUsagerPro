@@ -135,3 +135,22 @@ class Workshop:
         query = "SELECT * FROM workshops WHERE user_id IS NULL"
         rows = db_manager.fetch_all(query)
         return [Workshop.from_db(row) for row in rows]
+
+    @classmethod
+    def get_paginated_with_users(cls, db_manager, offset, limit):
+        query = """
+        SELECT w.*, u.nom, u.prenom
+        FROM workshops w
+        JOIN users u ON w.user_id = u.id
+        ORDER BY w.date DESC, w.id DESC
+        LIMIT ? OFFSET ?
+        """
+        results = db_manager.fetch_all(query, (limit, offset))
+        return [cls.from_db_with_user(row) for row in results]
+
+    @classmethod
+    def from_db_with_user(cls, row):
+        workshop = cls.from_db(row)
+        workshop.user_nom = row['nom']
+        workshop.user_prenom = row['prenom']
+        return workshop
