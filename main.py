@@ -7,7 +7,7 @@ import os
 import logging
 
 
-VERSION = "0.7.2"
+VERSION = "0.7.4"
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -24,6 +24,7 @@ def main():
     app = ctk.CTk()
     app.geometry("1000x600")
     app.title("Gestion des Usagers")
+    app.minsize(1000, 600)
     
     # Créer le dossier data s'il n'existe pas
     data_dir = os.path.join(os.path.dirname(__file__), 'data')

@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from models.user import User
+from models.workshop import Workshop
 from utils.date_utils import convert_to_db_date, convert_from_db_date, is_valid_date
 from datetime import datetime
 
@@ -47,6 +48,17 @@ class UserEditFrame(ctk.CTkFrame):
         # Bouton Retour
         self.back_button = ctk.CTkButton(button_frame, text="Retour à la liste des utilisateurs", command=self.back_to_list)
         self.back_button.pack(side=ctk.LEFT, padx=5)
+
+        # Ajout de l'historique des ateliers
+        self.history_frame = ctk.CTkScrollableFrame(self.form_frame)
+        self.history_frame.grid(row=7, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="nsew")
+        self.history_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
+        headers = ["Date", "Type d'atelier", "Conseiller", "Payant"]
+        for col, header in enumerate(headers):
+            ctk.CTkLabel(self.history_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=5, sticky="ew")
+
+        self.load_user_workshops()
 
     def create_form_field(self, parent, label, row, value):
         ctk.CTkLabel(parent, text=label).grid(row=row, column=0, padx=20, pady=(10, 0), sticky="w")
@@ -114,6 +126,14 @@ class UserEditFrame(ctk.CTkFrame):
     def open_add_workshop(self):
         self.show_add_workshop_callback(self.user)
 
+    def load_user_workshops(self):
+        workshops = Workshop.get_by_user(self.db_manager, self.user.id)
+        for i, workshop in enumerate(workshops, start=1):
+            ctk.CTkLabel(self.history_frame, text=workshop.date).grid(row=i, column=0, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text=workshop.categorie).grid(row=i, column=1, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text=workshop.conseiller).grid(row=i, column=2, padx=10, pady=5, sticky="ew")
+            ctk.CTkLabel(self.history_frame, text="Oui" if workshop.payant else "Non").grid(row=i, column=3, padx=10, pady=5, sticky="ew")
+
     def update_user_info(self):
         # Mettez à jour les champs avec les informations les plus récentes de l'utilisateur
         self.nom_entry.delete(0, 'end')
@@ -128,3 +148,4 @@ class UserEditFrame(ctk.CTkFrame):
         self.email_entry.insert(0, self.user.email if self.user.email else "")
         self.adresse_entry.delete(0, 'end')
         self.adresse_entry.insert(0, self.user.adresse if self.user.adresse else "")
+        self.load_user_workshops()  # Recharger les ateliers après la mise à jour
