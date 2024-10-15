@@ -144,6 +144,10 @@ class MainWindow(ctk.CTkFrame):
     def search_users(self, event=None):
         search_term = self.search_entry.get()
         try:
+            if not search_term.strip():  # Si la recherche est vide ou ne contient que des espaces
+                self.show_user_management()
+                return
+
             users = self.db_manager.search_users(search_term)
             
             # Vérifiez si le widget user_management existe et est visible
