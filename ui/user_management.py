@@ -7,10 +7,11 @@ import csv
 from utils.date_utils import convert_from_db_date
 
 class UserManagement(ctk.CTkFrame):
-    def __init__(self, master, db_manager, edit_user_callback, **kwargs):
+    def __init__(self, master, db_manager, edit_user_callback, edit_workshop_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.edit_user_callback = edit_user_callback
+        self.edit_workshop_callback = edit_workshop_callback
         self.users = []
         self.offset = 0
         self.limit = 25

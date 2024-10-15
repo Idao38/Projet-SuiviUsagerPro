@@ -12,6 +12,7 @@ from .data_management import DataManagement
 from .user_edit import UserEditFrame
 from theme import set_dark_theme, set_light_theme
 from .add_workshop import AddWorkshop
+from .edit_workshop import EditWorkshop
 
 import logging
 
@@ -43,7 +44,12 @@ class MainWindow(ctk.CTkFrame):
         # Initialiser les différentes sections
         self.dashboard = Dashboard(self.main_content, db_manager=self.db_manager)
         self.add_user = AddUser(self.main_content, db_manager=self.db_manager, update_callback=self.update_all_sections)
-        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, edit_user_callback=self.edit_user)
+        self.user_management = UserManagement(
+            self.main_content,
+            db_manager=self.db_manager,
+            edit_user_callback=self.edit_user,
+            edit_workshop_callback=self.show_edit_workshop
+        )
         self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
         self.settings = Settings(self.main_content, db_manager=self.db_manager, main_window=self)
         self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
@@ -172,15 +178,24 @@ class MainWindow(ctk.CTkFrame):
 
     def show_user_management(self):
         self.clear_main_content()
-        self.user_management = UserManagement(self.main_content, db_manager=self.db_manager, edit_user_callback=self.edit_user)
+        self.user_management = UserManagement(
+            self.main_content,
+            db_manager=self.db_manager,
+            edit_user_callback=self.edit_user,
+            edit_workshop_callback=self.show_edit_workshop
+        )
         self.user_management.pack(fill="both", expand=True)
         self.current_frame = self.user_management
 
     def show_workshop_history(self):
         self.clear_main_content()
-        self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
+        self.workshop_history = WorkshopHistory(
+            self.main_content,
+            db_manager=self.db_manager,
+            edit_workshop_callback=self.show_edit_workshop
+        )
         self.workshop_history.pack(fill="both", expand=True)
-        self.current_frame = self.workshop_history  # Ajoutez cette ligne
+        self.current_frame = self.workshop_history
 
     def show_data_management(self):
         self.clear_main_content()
@@ -208,10 +223,11 @@ class MainWindow(ctk.CTkFrame):
             user,
             show_user_management_callback=self.show_user_management,
             show_add_workshop_callback=self.show_add_workshop,
+            edit_workshop_callback=self.show_edit_workshop,
             update_callback=self.update_all_sections
         )
         self.user_edit.pack(fill="both", expand=True)
-        self.current_frame = self.user_edit  # Ajoutez cette ligne
+        self.current_frame = self.user_edit
 
     def clear_main_content(self):
         for widget in self.main_content.winfo_children():
@@ -300,8 +316,20 @@ class MainWindow(ctk.CTkFrame):
             user,
             show_user_management_callback=self.show_user_management,
             show_add_workshop_callback=self.show_add_workshop,
+            edit_workshop_callback=self.show_edit_workshop,
             update_callback=self.update_all_sections
         )
         self.user_edit.pack(fill="both", expand=True)
         self.current_frame = self.user_edit
         logging.debug("Fin de show_user_edit")
+
+    def show_edit_workshop(self, workshop):
+        self.clear_main_content()
+        self.edit_workshop = EditWorkshop(
+            self.main_content,
+            self.db_manager,
+            workshop,
+            update_callback=self.update_all_sections
+        )
+        self.edit_workshop.pack(fill="both", expand=True)
+        self.current_frame = self.edit_workshop

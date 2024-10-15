@@ -15,6 +15,7 @@ class RGPDManager:
         LEFT JOIN workshops w ON u.id = w.user_id
         GROUP BY u.id
         HAVING last_activity_date < ? OR last_activity_date IS NULL
+        ORDER BY last_activity_date ASC
         """
         rows = self.db_manager.fetch_all(query, (convert_to_db_date(cutoff_date.strftime("%d/%m/%Y")),))
         return [User.from_db(row) for row in rows]

@@ -70,7 +70,8 @@ class DataManagement(ctk.CTkFrame):
             user_frame = ctk.CTkFrame(rgpd_frame)
             user_frame.pack(fill="x", padx=5, pady=5)
             
-            ctk.CTkLabel(user_frame, text=f"{user.nom} {user.prenom} - Inactif depuis le {user.last_activity_date}").pack(side="left", padx=5)
+            last_activity = user.last_activity_date if user.last_activity_date else "Jamais"
+            ctk.CTkLabel(user_frame, text=f"{user.nom} {user.prenom} - Dernière activité : {last_activity}").pack(side="left", padx=5)
             ctk.CTkButton(user_frame, text="Supprimer", command=lambda u=user: self.delete_inactive_user(u)).pack(side="right", padx=5)
 
         delete_all_button = ctk.CTkButton(rgpd_window, text="Supprimer tous les usagers inactifs", command=self.delete_all_inactive_users)

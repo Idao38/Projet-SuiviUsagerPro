@@ -6,12 +6,13 @@ from utils.date_utils import convert_to_db_date, convert_from_db_date, is_valid_
 from datetime import datetime
 
 class UserEditFrame(ctk.CTkFrame):
-    def __init__(self, master, db_manager, user, show_user_management_callback, show_add_workshop_callback, update_callback, **kwargs):
+    def __init__(self, master, db_manager, user, show_user_management_callback, show_add_workshop_callback, edit_workshop_callback, update_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.user = user
         self.show_user_management_callback = show_user_management_callback
         self.show_add_workshop_callback = show_add_workshop_callback
+        self.edit_workshop_callback = edit_workshop_callback
         self.update_callback = update_callback
 
         self.grid_columnconfigure(0, weight=1)
@@ -53,6 +54,9 @@ class UserEditFrame(ctk.CTkFrame):
         self.history_frame = ctk.CTkScrollableFrame(self.form_frame)
         self.history_frame.grid(row=7, column=0, columnspan=2, padx=20, pady=(20, 10), sticky="nsew")
         self.history_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
+        # Ajoutez ces lignes pour définir les couleurs alternées
+        self.colors = {"even": "#E6E6E6", "odd": "#FFFFFF"}  # Gris clair et blanc
 
         headers = ["Date", "Type d'atelier", "Conseiller", "Payant"]
         for col, header in enumerate(headers):
@@ -128,11 +132,37 @@ class UserEditFrame(ctk.CTkFrame):
 
     def load_user_workshops(self):
         workshops = Workshop.get_by_user(self.db_manager, self.user.id)
+        headers = ["Date", "Type d'atelier", "Conseiller", "Payant"]
+        
+        # Créer une ligne d'en-tête
+        header_frame = ctk.CTkFrame(self.history_frame, fg_color=self.colors["even"])
+        header_frame.grid(row=0, column=0, columnspan=4, sticky="ew", padx=5, pady=2)
+        header_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
+        for col, header in enumerate(headers):
+            ctk.CTkLabel(header_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=5, sticky="ew")
+
         for i, workshop in enumerate(workshops, start=1):
-            ctk.CTkLabel(self.history_frame, text=workshop.date).grid(row=i, column=0, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text=workshop.categorie).grid(row=i, column=1, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text=workshop.conseiller).grid(row=i, column=2, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text="Oui" if workshop.payant else "Non").grid(row=i, column=3, padx=10, pady=5, sticky="ew")
+            row_color = self.colors["odd"] if i % 2 else self.colors["even"]
+            row_frame = ctk.CTkFrame(self.history_frame, fg_color=row_color)
+            row_frame.grid(row=i, column=0, columnspan=4, sticky="ew", padx=5, pady=2)
+            row_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+            row_frame.bind("<Button-1>", lambda e, w=workshop: self.on_workshop_click(w))
+
+            labels = [
+                ctk.CTkLabel(row_frame, text=workshop.date, anchor="w"),
+                ctk.CTkLabel(row_frame, text=workshop.categorie, anchor="w"),
+                ctk.CTkLabel(row_frame, text=workshop.conseiller, anchor="w"),
+                ctk.CTkLabel(row_frame, text="Oui" if workshop.payant else "Non", anchor="w")
+            ]
+
+            for col, label in enumerate(labels):
+                label.grid(row=0, column=col, padx=10, pady=5, sticky="ew")
+                label.bind("<Button-1>", lambda e, w=workshop: self.on_workshop_click(w))
+
+    def on_workshop_click(self, workshop):
+        if self.edit_workshop_callback:
+            self.edit_workshop_callback(workshop)
 
     def update_user_info(self):
         # Mettez à jour les champs avec les informations les plus récentes de l'utilisateur
@@ -148,4 +178,9 @@ class UserEditFrame(ctk.CTkFrame):
         self.email_entry.insert(0, self.user.email if self.user.email else "")
         self.adresse_entry.delete(0, 'end')
         self.adresse_entry.insert(0, self.user.adresse if self.user.adresse else "")
-        self.load_user_workshops()  # Recharger les ateliers après la mise à jour
+        
+        # Effacer les ateliers existants et les recharger
+        for widget in self.history_frame.winfo_children():
+            if isinstance(widget, ctk.CTkFrame):
+                widget.destroy()
+        self.load_user_workshops()

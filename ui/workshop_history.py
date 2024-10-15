@@ -5,9 +5,10 @@ from models.workshop import Workshop
 
 
 class WorkshopHistory(ctk.CTkFrame):
-    def __init__(self, master, db_manager=None, **kwargs):
+    def __init__(self, master, db_manager=None, edit_workshop_callback=None, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
+        self.edit_workshop_callback = edit_workshop_callback
         self.workshops = []
         self.offset = 0
         self.limit = 25
@@ -47,11 +48,22 @@ class WorkshopHistory(ctk.CTkFrame):
     def display_workshops(self, workshops):
         start_row = len(self.history_frame.winfo_children()) // 5  # 5 colonnes par atelier
         for i, workshop in enumerate(workshops, start=start_row):
-            ctk.CTkLabel(self.history_frame, text=workshop.user_nom).grid(row=i, column=0, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text=workshop.user_prenom).grid(row=i, column=1, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text=workshop.date).grid(row=i, column=2, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text=workshop.categorie).grid(row=i, column=3, padx=10, pady=5, sticky="ew")
-            ctk.CTkLabel(self.history_frame, text=workshop.conseiller).grid(row=i, column=4, padx=10, pady=5, sticky="ew")
+            row_frame = ctk.CTkFrame(self.history_frame)
+            row_frame.grid(row=i, column=0, columnspan=5, sticky="ew", padx=5, pady=2)
+            row_frame.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
+            row_frame.bind("<Button-1>", lambda e, w=workshop: self.on_workshop_click(w))
+
+            labels = [
+                ctk.CTkLabel(row_frame, text=workshop.user_nom, anchor="w"),
+                ctk.CTkLabel(row_frame, text=workshop.user_prenom, anchor="w"),
+                ctk.CTkLabel(row_frame, text=workshop.date, anchor="w"),
+                ctk.CTkLabel(row_frame, text=workshop.categorie, anchor="w"),
+                ctk.CTkLabel(row_frame, text=workshop.conseiller, anchor="w")
+            ]
+
+            for col, label in enumerate(labels):
+                label.grid(row=0, column=col, padx=10, pady=5, sticky="ew")
+                label.bind("<Button-1>", lambda e, w=workshop: self.on_workshop_click(w))
 
     def load_more_workshops(self):
         self.load_history()
@@ -61,7 +73,7 @@ class WorkshopHistory(ctk.CTkFrame):
         self.workshops = []
         self.offset = 0
         for widget in self.history_frame.winfo_children():
-            if isinstance(widget, ctk.CTkLabel) and widget.cget("font").cget("weight") != "bold":
+            if isinstance(widget, ctk.CTkFrame):
                 widget.destroy()
         self.load_history()
         self.load_more_button.grid()
@@ -77,3 +89,7 @@ class WorkshopHistory(ctk.CTkFrame):
         if self.history_frame.winfo_height() < self.history_frame.bbox("all")[3]:
             if self.history_frame.yview()[1] >= 0.9:
                 self.load_history()
+
+    def on_workshop_click(self, workshop):
+        if self.edit_workshop_callback:
+            self.edit_workshop_callback(workshop)
