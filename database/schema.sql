@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS workshops (
     description TEXT,
     categorie TEXT,
     payant INTEGER,
-    paid_today INTEGER DEFAULT 0,
+    paid INTEGER DEFAULT 0, 
     date TEXT,
     conseiller TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL

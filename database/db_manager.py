@@ -12,92 +12,60 @@ class DatabaseManager:
         self.connection = None
 
     def initialize(self):
-        """Initialize the database connection and create tables if they don't exist."""
         try:
             with self.get_connection() as conn:
                 self.create_tables(conn)
-                self.add_last_activity_date_column() 
-                self.add_last_payment_date_column()
-                self.add_paid_today_column()  # Ajoutez cette ligne
-            logging.info(f"Database initialized successfully: {self.db_path}")
+                self._add_columns()
+            logging.info(f"Base de données initialisée avec succès : {self.db_path}")
         except Exception as e:
-            logging.error(f"Error initializing database: {e}")
+            logging.error(f"Erreur lors de l'initialisation de la base de données : {e}")
             raise
 
     @contextmanager
     def get_connection(self):
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        yield conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def execute(self, query, params=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if params:
-                    cursor.execute(query, params)
-                else:
-                    cursor.execute(query)
+                cursor.execute(query, params or ())
                 conn.commit()
                 return cursor
             except sqlite3.Error as e:
-                logging.error(f"Error executing query: {e}")
+                logging.error(f"Erreur d'exécution de la requête : {e}")
                 conn.rollback()
                 raise
 
     def fetch_one(self, query, params=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                if params:
-                    cursor.execute(query, params)
-                else:
-                    cursor.execute(query)
-                return cursor.fetchone()
-            except sqlite3.Error as e:
-                logging.error(f"Error fetching one: {e}")
-                raise
+            cursor.execute(query, params or ())
+            return cursor.fetchone()
 
     def fetch_all(self, query, params=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                if params:
-                    cursor.execute(query, params)
-                else:
-                    cursor.execute(query)
-                return cursor.fetchall()
-            except sqlite3.Error as e:
-                logging.error(f"Error fetching all: {e}")
-                raise
-
-    def get_all_users(self):
-        query = "SELECT * FROM users"
-        rows = self.fetch_all(query)
-        return [User.from_db(row) for row in rows]
-
-    def get_all_workshops(self):
-        query = "SELECT * FROM workshops"
-        rows = self.fetch_all(query)
-        return [Workshop.from_db(row) for row in rows]
-
-    def close(self):
-        if self.connection:
-            try:
-                self.connection.close()
-            except sqlite3.ProgrammingError:
-                logging.warning("Tentative de fermeture d'une connexion dans un thread différent.")
-            self.connection = None
-            self.cursor = None
-            logging.info("Database connection closed")
+            cursor.execute(query, params or ())
+            return cursor.fetchall()
 
     def create_tables(self, connection):
         with open('database/schema.sql', 'r') as schema_file:
             schema = schema_file.read()
-        
         connection.executescript(schema)
 
-    # Ajoutez d'autres méthodes spécifiques si nécessaire
+    def get_last_insert_id(self):
+        return self.fetch_one("SELECT last_insert_rowid()")[0]
+
+    # Méthodes pour les utilisateurs
+    def get_all_users(self):
+        rows = self.fetch_all("SELECT * FROM users")
+        return [User.from_db(row) for row in rows]
 
     def search_users(self, search_term):
         query = """
@@ -105,71 +73,43 @@ class DatabaseManager:
         WHERE nom LIKE ? OR prenom LIKE ? OR telephone LIKE ? OR email LIKE ?
         """
         search_pattern = f"%{search_term}%"
-        rows = self.fetch_all(query, (search_pattern, search_pattern, search_pattern, search_pattern))
+        rows = self.fetch_all(query, (search_pattern,) * 4)
         return [User.from_db(row) for row in rows]
 
-    def add_last_activity_date_column(self):
-        try:
-            # Vérifier si la colonne existe déjà
-            check_query = "PRAGMA table_info(users);"
-            columns = self.fetch_all(check_query)
-            column_names = [column['name'] for column in columns]
-            
-            if 'last_activity_date' not in column_names:
-                query = "ALTER TABLE users ADD COLUMN last_activity_date TEXT;"
-                self.execute(query)
-                logging.info("Colonne last_activity_date ajoutée avec succès.")
-            else:
-                logging.info("La colonne last_activity_date existe déjà.")
-        except Exception as e:
-            logging.error(f"Erreur lors de la vérification/ajout de la colonne last_activity_date : {e}")
+    # Méthodes pour les ateliers
+    def get_all_workshops(self):
+        rows = self.fetch_all("SELECT * FROM workshops")
+        return [Workshop.from_db(row) for row in rows]
 
-    def get_last_insert_id(self):
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT last_insert_rowid()")
-            return cursor.fetchone()[0]
+    # Méthodes privées pour l'ajout de colonnes
+    def _add_columns(self):
+        self._add_last_activity_date_column()
+        self._add_last_payment_date_column()
+        self._add_paid_today_column()
 
-    def add_last_payment_date_column(self):
-        try:
-            # Vérifier si la colonne existe déjà
-            check_query = "PRAGMA table_info(users);"
-            columns = self.fetch_all(check_query)
-            column_names = [column['name'] for column in columns]
-            
-            if 'last_payment_date' not in column_names:
-                query = "ALTER TABLE users ADD COLUMN last_payment_date TEXT;"
-                self.execute(query)
-                logging.info("Colonne last_payment_date ajoutée avec succès.")
-            else:
-                logging.info("La colonne last_payment_date existe déjà.")
-        except Exception as e:
-            logging.error(f"Erreur lors de la vérification/ajout de la colonne last_payment_date : {e}")
+    def _add_last_activity_date_column(self):
+        self._add_column_if_not_exists('users', 'last_activity_date', 'TEXT')
 
-    def add_paid_today_column(self):
-        try:
-            # Vérifier si la colonne existe déjà
-            check_query = "PRAGMA table_info(workshops);"
-            columns = self.fetch_all(check_query)
-            column_names = [column['name'] for column in columns]
-            
-            if 'paid_today' not in column_names:
-                query = "ALTER TABLE workshops ADD COLUMN paid_today INTEGER DEFAULT 0;"
-                self.execute(query)
-                logging.info("Colonne paid_today ajoutée avec succès à la table workshops.")
-            else:
-                logging.info("La colonne paid_today existe déjà dans la table workshops.")
-        except Exception as e:
-            logging.error(f"Erreur lors de la vérification/ajout de la colonne paid_today : {e}")
+    def _add_last_payment_date_column(self):
+        self._add_column_if_not_exists('users', 'last_payment_date', 'TEXT')
 
-def initialize(self):
-    try:
-        with self.get_connection() as conn:
-            self.create_tables(conn)
-            self.add_last_activity_date_column() 
-            self.add_last_payment_date_column()
-            self.add_paid_today_column()  # Ajoutez cette ligne
-        logging.info(f"Database initialized successfully: {self.db_path}")
-    except Exception as e:
-        logging.error(f"Error initializing database: {e}")
-        raise
+    def _add_paid_today_column(self):
+        self._add_column_if_not_exists('workshops', 'paid_today', 'INTEGER DEFAULT 0')
+
+    def _add_column_if_not_exists(self, table, column, data_type):
+        columns = self.fetch_all(f"PRAGMA table_info({table});")
+        if column not in [col['name'] for col in columns]:
+            self.execute(f"ALTER TABLE {table} ADD COLUMN {column} {data_type};")
+            logging.info(f"Colonne {column} ajoutée avec succès à la table {table}.")
+        else:
+            logging.info(f"La colonne {column} existe déjà dans la table {table}.")
+
+    def close(self):
+        if self.connection:
+            try:
+                self.connection.close()
+            except sqlite3.ProgrammingError:
+                logging.warning("Tentative de fermeture d'une connexion déjà fermée.")
+            finally:
+                self.connection = None
+        logging.info("Connexion à la base de données fermée.")

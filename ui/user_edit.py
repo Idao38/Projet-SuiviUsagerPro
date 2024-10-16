@@ -65,7 +65,7 @@ class UserEditFrame(ctk.CTkFrame):
         # Ajoutez ces lignes pour définir les couleurs alternées
         self.colors = {"even": "#E6E6E6", "odd": "#FFFFFF"}  # Gris clair et blanc
 
-        headers = ["Date", "Type d'atelier", "Conseiller", "Payant"]
+        headers = ["Date", "Type d'atelier", "Conseiller", "Payé"]
         for col, header in enumerate(headers):
             ctk.CTkLabel(self.history_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=5, sticky="ew")
 
@@ -129,6 +129,14 @@ class UserEditFrame(ctk.CTkFrame):
         # Sauvegarder les modifications
         self.user.save(self.db_manager)
 
+        # Vérifiez le statut de paiement
+        is_up_to_date = self.user.is_workshop_payment_up_to_date(self.db_manager)
+        payment_status = "À jour" if is_up_to_date else "En retard"
+        
+        # Mettez à jour l'interface utilisateur avec le nouveau statut
+        # (Assurez-vous d'avoir un widget pour afficher ce statut)
+        self.payment_status_label.configure(text=f"Statut de paiement : {payment_status}")
+
         messagebox.showinfo("Succès", "Les modifications ont été sauvegardées avec succès.")
         self.update_callback()
         self.back_to_list()
@@ -141,7 +149,7 @@ class UserEditFrame(ctk.CTkFrame):
 
     def load_user_workshops(self):
         workshops = Workshop.get_by_user(self.db_manager, self.user.id)
-        headers = ["Date", "Type d'atelier", "Conseiller", "Payant"]
+        headers = ["Date", "Type d'atelier", "Conseiller", "Payé"]
         
         # Créer une ligne d'en-tête
         header_frame = ctk.CTkFrame(self.history_frame)
@@ -161,7 +169,7 @@ class UserEditFrame(ctk.CTkFrame):
                 ctk.CTkLabel(row_frame, text=workshop.date, anchor="w"),
                 ctk.CTkLabel(row_frame, text=workshop.categorie, anchor="w"),
                 ctk.CTkLabel(row_frame, text=workshop.conseiller, anchor="w"),
-                ctk.CTkLabel(row_frame, text="Oui" if workshop.payant else "Non", anchor="w")
+                ctk.CTkLabel(row_frame, text="Oui" if workshop.paid else "Non", anchor="w")  
             ]
 
             for col, label in enumerate(labels):

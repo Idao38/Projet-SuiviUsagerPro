@@ -1,8 +1,8 @@
 from utils.date_utils import convert_to_db_date, convert_from_db_date
-from datetime import datetime
+from datetime import datetime, timedelta
+from utils.config_utils import get_ateliers_entre_paiements, get_default_paid_workshops
 import logging
-from datetime import timedelta
-from utils.config_utils import get_ateliers_entre_paiements
+
 
 
 class User:
@@ -143,12 +143,14 @@ class User:
 
     def is_workshop_payment_up_to_date(self, db_manager):
         ateliers_entre_paiements = get_ateliers_entre_paiements()
+        default_paid_workshops = get_default_paid_workshops()
         
         query = """
         WITH paid_workshops AS (
-            SELECT ROW_NUMBER() OVER (ORDER BY date) as row_num, date, paid_today
+            SELECT ROW_NUMBER() OVER (ORDER BY date) as row_num, date, paid
             FROM workshops
-            WHERE user_id = ? AND paid_today = 1
+            WHERE user_id = ? AND categorie IN ({}) AND paid = 1
+            ORDER BY date
         )
         SELECT COUNT(*) as total_paid_workshops,
                (SELECT COUNT(*) FROM paid_workshops WHERE date <= ?) as paid_workshops_count,
@@ -156,8 +158,14 @@ class User:
                (SELECT COUNT(*) FROM paid_workshops WHERE row_num > (SELECT MAX(row_num) FROM paid_workshops) - ?) as last_payment_check
         FROM paid_workshops
         """
+        placeholders = ','.join(['?' for _ in default_paid_workshops])
+        query = query.format(placeholders)
+        
+        placeholders = ','.join(['?' for _ in default_paid_workshops]) + ','
+        query = query.format(placeholders)
+        
         current_date = datetime.now().strftime("%Y-%m-%d")
-        result = db_manager.fetch_one(query, (self.id, current_date, ateliers_entre_paiements, ateliers_entre_paiements))
+        result = db_manager.fetch_one(query, (self.id, *default_paid_workshops, current_date, ateliers_entre_paiements, ateliers_entre_paiements))
         
         if result:
             total_paid_workshops = result['total_paid_workshops']
@@ -172,11 +180,60 @@ class User:
             
             return payments_made >= payments_required and last_payment_check > 0
         
-        return True  # Si aucun atelier payant, considéré comme à jour
+        return True  # En cas d'erreur, on considère l'utilisateur comme à jour
+
+    def calculate_workshop_payment_status(self, db_manager):
+        ateliers_entre_paiements = get_ateliers_entre_paiements()
+        default_paid_workshops = get_default_paid_workshops()
+        
+        query = """
+        WITH paid_workshops AS (
+            SELECT ROW_NUMBER() OVER (ORDER BY date) as row_num, paid
+            FROM workshops
+            WHERE user_id = ? AND categorie IN ({}) AND payant = 1
+            ORDER BY date
+        )
+        SELECT 
+            COUNT(*) as total_paid_workshops,
+            SUM(CASE WHEN paid = 1 THEN 1 ELSE 0 END) as total_payments_made,
+            MAX(CASE WHEN paid = 1 THEN row_num ELSE 0 END) as last_paid_workshop
+        FROM paid_workshops
+        """
+        placeholders = ','.join(['?' for _ in default_paid_workshops])
+        query = query.format(placeholders)
+        
+        result = db_manager.fetch_one(query, (self.id, *default_paid_workshops))
+        
+        if result:
+            total_paid_workshops = result['total_paid_workshops']
+            total_payments_made = result['total_payments_made']
+            last_paid_workshop = result['last_paid_workshop']
+            
+            if total_paid_workshops == 0:
+                self._payment_status = "À jour"
+            else:
+                current_cycle = (total_paid_workshops - 1) // ateliers_entre_paiements
+                paid_cycles = total_payments_made
+                
+                if paid_cycles > current_cycle:
+                    self._payment_status = "À jour"
+                elif paid_cycles == current_cycle:
+                    # Vérifie si le dernier atelier payé est dans le cycle courant
+                    if last_paid_workshop > current_cycle * ateliers_entre_paiements:
+                        self._payment_status = "À jour"
+                    else:
+                        self._payment_status = "En retard"
+                else:
+                    self._payment_status = "En retard"
+        else:
+            self._payment_status = "À jour"
+        
+        return self._payment_status
 
     def get_workshop_payment_status(self, db_manager):
-        is_up_to_date = self.is_workshop_payment_up_to_date(db_manager)
-        return "À jour" if is_up_to_date else "En retard"
+        if not hasattr(self, '_payment_status') or self._payment_status is None:
+            self.calculate_workshop_payment_status(db_manager)
+        return self._payment_status
 
     def update_last_payment_date(self, db_manager):
         current_date = datetime.now().strftime("%Y-%m-%d")
@@ -185,3 +242,5 @@ class User:
 
     def update_payment_status(self, db_manager):
         self.payment_status = self.get_workshop_payment_status(db_manager)
+
+

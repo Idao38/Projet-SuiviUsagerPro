@@ -39,21 +39,21 @@ def generate_workshops(num_workshops):
         workshop_date = fake.date_between(start_date='-2y', end_date='today')
         categorie = random.choice(categories)
         is_payant = categorie in default_paid_workshops
-        paid_today = is_payant and random.choice([True, False])
+        paid = is_payant and random.choice([True, False])
         
         workshop = Workshop(
             user_id=user.id,
             description=fake.sentence(),
             categorie=categorie,
             payant=is_payant,
-            paid_today=paid_today,
+            paid=paid,
             date=workshop_date.strftime("%d/%m/%Y"),
             conseiller=random.choice(conseillers)
         )
         workshop.save(db_manager)
         
-        if paid_today:
-            # Mise à jour de la date du dernier paiement si l'atelier est payé aujourd'hui
+        if paid:
+            # Mise à jour de la date du dernier paiement si l'atelier est payé
             user.update_last_payment_date(db_manager)
 
 def update_payment_status():
@@ -61,7 +61,7 @@ def update_payment_status():
     for user in users:
         workshops = Workshop.get_user_workshops(db_manager, user.id)
         for workshop in workshops:
-            if workshop.paid_today:
+            if workshop.paid:
                 user.update_last_payment_date(db_manager)
 
 if __name__ == "__main__":

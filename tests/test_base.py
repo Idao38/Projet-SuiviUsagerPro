@@ -1,6 +1,8 @@
 import unittest
 from database.db_manager import DatabaseManager
 import os
+import logging
+import tempfile
 
 class BaseTestCase(unittest.TestCase):
     @classmethod
@@ -10,12 +12,17 @@ class BaseTestCase(unittest.TestCase):
         cls.db_manager = DatabaseManager(cls.db_path)
 
     def setUp(self):
-        self.db_manager = DatabaseManager(os.environ['TEST_DB_PATH'])
+        # Créer un fichier temporaire pour la base de données de test
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False)
+        self.temp_db.close()
+        self.db_manager = DatabaseManager(self.temp_db.name)
+        self.db_manager.initialize()
+        logging.info(f"Base de données de test initialisée : {self.temp_db.name}")
         self.addCleanup(self.db_manager.close)
 
     def tearDown(self):
-        # Nettoyage après chaque test si nécessaire
-        pass
+        self.db_manager.close()
+        os.unlink(self.temp_db.name)  # Supprimer le fichier temporaire
 
     @classmethod
     def tearDownClass(cls):

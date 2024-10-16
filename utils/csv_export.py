@@ -96,7 +96,7 @@ class CSVExporter:
             users = self.db_manager.get_all_users()
             with open(file_path, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(['ID', 'Nom', 'Prénom', 'Date de naissance', 'Téléphone', 'Email', 'Adresse', 'Date de création'])
+                writer.writerow(['ID', 'Nom', 'Prénom', 'Date de naissance', 'Téléphone', 'Email', 'Adresse', 'Date de création', 'Dernière activité', 'Dernier paiement'])
                 for user in users:
                     writer.writerow([
                         user.id,
@@ -106,7 +106,9 @@ class CSVExporter:
                         user.telephone,
                         user.email,
                         user.adresse,
-                        user.date_creation if user.date_creation else ''
+                        user.date_creation if user.date_creation else '',
+                        user.last_activity_date if user.last_activity_date else '',
+                        user.last_payment_date if user.last_payment_date else ''
                     ])
             return True, f"Les données des utilisateurs ont été exportées avec succès dans {file_path}"
         except Exception as e:
@@ -118,7 +120,7 @@ class CSVExporter:
             workshops = self.db_manager.get_all_workshops()
             with open(file_path, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
-                writer.writerow(['ID', 'User ID', 'Description', 'Catégorie', 'Payant', 'Date', 'Conseiller'])
+                writer.writerow(['ID', 'User ID', 'Description', 'Catégorie', 'Payant', 'Payé', 'Date', 'Conseiller'])
                 for workshop in workshops:
                     writer.writerow([
                         workshop.id,
@@ -126,6 +128,7 @@ class CSVExporter:
                         workshop.description,
                         workshop.categorie,
                         'Oui' if workshop.payant else 'Non',
+                        'Oui' if workshop.paid else 'Non',
                         workshop.date if workshop.date else '',
                         workshop.conseiller
                     ])

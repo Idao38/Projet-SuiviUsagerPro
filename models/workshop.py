@@ -4,13 +4,13 @@ import logging
 from models.user import User
 
 class Workshop:
-    def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, paid_today=False, date=None, conseiller=None):
+    def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, paid=False, date=None, conseiller=None):
         self.id = id
         self.user_id = user_id
         self.description = description
         self.categorie = categorie
         self.payant = payant
-        self.paid_today = paid_today
+        self.paid = paid 
         self.date = date
         self.conseiller = conseiller
 
@@ -22,7 +22,7 @@ class Workshop:
             description=row['description'],
             categorie=row['categorie'],
             payant=row['payant'],
-            paid_today=row['paid_today'],
+            paid=row['paid'],  
             date=row['date'],
             conseiller=row['conseiller']
         )
@@ -34,27 +34,25 @@ class Workshop:
             'description': self.description,
             'categorie': self.categorie,
             'payant': self.payant,
-            'paid_today': self.paid_today,
+            'paid': self.paid, 
             'date': self.date,
             'conseiller': self.conseiller
         }
 
     def save(self, db_manager):
-        if self.date is None:
-            self.date = datetime.now().strftime("%d/%m/%Y")
         if self.id is None:
             query = """
-            INSERT INTO workshops (user_id, description, categorie, payant, paid_today, date, conseiller)
+            INSERT INTO workshops (user_id, description, categorie, payant, paid, date, conseiller)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """
-            params = (self.user_id, self.description, self.categorie, self.payant, self.paid_today, self.date, self.conseiller)
+            params = (self.user_id, self.description, self.categorie, self.payant, self.paid, self.date, self.conseiller)
         else:
             query = """
             UPDATE workshops
-            SET user_id=?, description=?, categorie=?, payant=?, paid_today=?, date=?, conseiller=?
+            SET user_id=?, description=?, categorie=?, payant=?, paid=?, date=?, conseiller=?
             WHERE id=?
             """
-            params = (self.user_id, self.description, self.categorie, self.payant, self.paid_today, self.date, self.conseiller, self.id)
+            params = (self.user_id, self.description, self.categorie, self.payant, self.paid, self.date, self.conseiller, self.id)
 
         db_manager.execute(query, params)
         if self.id is None:
@@ -117,7 +115,7 @@ class Workshop:
                     description=row['description'],
                     categorie=row['categorie'],
                     payant=row['payant'],
-                    paid_today=row['paid_today'],
+                    paid=row['paid'], 
                     date=convert_from_db_date(row['date']),  # Convertir la date du format DB au format DD/MM/YYYY
                     conseiller=row['conseiller']
                 )
@@ -169,7 +167,7 @@ class Workshop:
             description=row['description'],
             categorie=row['categorie'],
             payant=row['payant'],
-            paid_today=row['paid_today'],
+            paid=row['paid'],  
             date=row['date'],
             conseiller=row['conseiller']
         )
