@@ -4,13 +4,14 @@ import logging
 from models.user import User
 
 class Workshop:
-    def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, date=None, conseiller=None):
+    def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, paid_today=False, date=None, conseiller=None):
         self.id = id
         self.user_id = user_id
         self.description = description
         self.categorie = categorie
         self.payant = payant
-        self.date = date  # Ne pas convertir ici
+        self.paid_today = paid_today
+        self.date = date
         self.conseiller = conseiller
 
     @classmethod
@@ -21,6 +22,7 @@ class Workshop:
             description=row['description'],
             categorie=row['categorie'],
             payant=row['payant'],
+            paid_today=row['paid_today'],
             date=row['date'],
             conseiller=row['conseiller']
         )
@@ -32,6 +34,7 @@ class Workshop:
             'description': self.description,
             'categorie': self.categorie,
             'payant': self.payant,
+            'paid_today': self.paid_today,
             'date': self.date,
             'conseiller': self.conseiller
         }
@@ -41,34 +44,30 @@ class Workshop:
             self.date = datetime.now().strftime("%d/%m/%Y")
         if self.id is None:
             query = """
-            INSERT INTO workshops (user_id, description, categorie, payant, date, conseiller)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO workshops (user_id, description, categorie, payant, paid_today, date, conseiller)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """
-            params = (self.user_id, self.description, self.categorie, self.payant, self.date, self.conseiller)
+            params = (self.user_id, self.description, self.categorie, self.payant, self.paid_today, self.date, self.conseiller)
         else:
             query = """
             UPDATE workshops
-            SET user_id=?, description=?, categorie=?, payant=?, date=?, conseiller=?
+            SET user_id=?, description=?, categorie=?, payant=?, paid_today=?, date=?, conseiller=?
             WHERE id=?
             """
-            params = (self.user_id, self.description, self.categorie, self.payant, self.date, self.conseiller, self.id)
+            params = (self.user_id, self.description, self.categorie, self.payant, self.paid_today, self.date, self.conseiller, self.id)
 
-        try:
-            cursor = db_manager.execute(query, params)
-            if self.id is None:
-                self.id = cursor.lastrowid
-            
-            # Mise à jour de la date de dernière activité de l'utilisateur
-            if self.user_id:
-                user = User.get_by_id(db_manager, self.user_id)
-                if user:
-                    user.last_activity_date = self.date
-                    user.save(db_manager)
-            
-            return self.id
-        except Exception as e:
-            logging.error(f"Error saving workshop: {e}")
-            raise
+        db_manager.execute(query, params)
+        if self.id is None:
+            self.id = db_manager.get_last_insert_id()
+        
+        # Mise à jour de la date de dernière activité de l'utilisateur
+        if self.user_id:
+            user = User.get_by_id(db_manager, self.user_id)
+            if user:
+                user.last_activity_date = self.date
+                user.save(db_manager)
+        
+        return self.id
 
     @staticmethod
     def get_all(db_manager):
@@ -118,6 +117,7 @@ class Workshop:
                     description=row['description'],
                     categorie=row['categorie'],
                     payant=row['payant'],
+                    paid_today=row['paid_today'],
                     date=convert_from_db_date(row['date']),  # Convertir la date du format DB au format DD/MM/YYYY
                     conseiller=row['conseiller']
                 )
@@ -154,3 +154,22 @@ class Workshop:
         workshop.user_nom = row['nom']
         workshop.user_prenom = row['prenom']
         return workshop
+
+    @staticmethod
+    def get_user_workshops(db_manager, user_id):
+        query = "SELECT * FROM workshops WHERE user_id = ? ORDER BY date"
+        rows = db_manager.fetch_all(query, (user_id,))
+        return [Workshop.from_db(row) for row in rows]
+
+    @classmethod
+    def from_db(cls, row):
+        return cls(
+            id=row['id'],
+            user_id=row['user_id'] if row['user_id'] is not None else None,
+            description=row['description'],
+            categorie=row['categorie'],
+            payant=row['payant'],
+            paid_today=row['paid_today'],
+            date=row['date'],
+            conseiller=row['conseiller']
+        )

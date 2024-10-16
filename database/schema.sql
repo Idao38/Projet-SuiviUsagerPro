@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT,
     adresse TEXT,
     date_creation TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-    last_activity_date TEXT
+    last_activity_date TEXT,
+    last_payment_date TEXT
 );
 
 CREATE TABLE IF NOT EXISTS workshops (
@@ -15,7 +16,8 @@ CREATE TABLE IF NOT EXISTS workshops (
     user_id INTEGER,
     description TEXT,
     categorie TEXT,
-    payant BOOLEAN,
+    payant INTEGER,
+    paid_today INTEGER DEFAULT 0,
     date TEXT,
     conseiller TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL

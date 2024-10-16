@@ -2,7 +2,6 @@ import json
 import os
 import customtkinter as ctk
 from utils.config_utils import *
-from ui.settings import Settings
 
 CONFIG_FILE = os.environ.get("CONFIG_FILE", "config.json")
 
@@ -25,11 +24,6 @@ def setUp(self):
     initial_config = {"conseillers": [], "current_conseiller": ""}
     save_config(initial_config)
 
-    self.root = ctk.CTk()
-    self.root.update_appearance = lambda: None
-    self.root.update_conseiller_dropdown = self.mock_update_conseiller_dropdown
-    self.settings = Settings(self.root, self.db_manager, self.root)
-
 def tearDown(self):
     super().tearDown()
     os.environ["CONFIG_FILE"] = self.original_config_file
@@ -44,4 +38,13 @@ def get_inactivity_period():
 def set_inactivity_period(period):
     config = load_config()
     config["inactivity_period"] = str(period)
+    save_config(config)
+
+def get_ateliers_entre_paiements():
+    config = load_config()
+    return config.get("ateliers_entre_paiements", 5)  # Par défaut 5 ateliers
+
+def set_ateliers_entre_paiements(nombre):
+    config = load_config()
+    config["ateliers_entre_paiements"] = int(nombre)
     save_config(config)

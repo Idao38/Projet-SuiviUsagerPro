@@ -57,3 +57,21 @@ def set_inactivity_period(period):
     config = load_config()
     config["inactivity_period"] = str(period)
     save_config(config)
+
+def get_ateliers_entre_paiements():
+    config = load_config()
+    return config.get("ateliers_entre_paiements", 5)  # Par défaut 5 ateliers
+
+def set_ateliers_entre_paiements(nombre):
+    config = load_config()
+    config["ateliers_entre_paiements"] = int(nombre)
+    save_config(config)
+
+def get_default_paid_workshops():
+    config = load_config()
+    return config.get("default_paid_workshops", ["Atelier numérique"])
+
+def set_default_paid_workshops(workshops):
+    config = load_config()
+    config["default_paid_workshops"] = workshops
+    save_config(config)

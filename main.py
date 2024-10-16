@@ -7,7 +7,7 @@ import os
 import logging
 
 
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 

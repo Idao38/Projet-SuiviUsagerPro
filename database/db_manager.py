@@ -16,7 +16,9 @@ class DatabaseManager:
         try:
             with self.get_connection() as conn:
                 self.create_tables(conn)
-                self.add_last_activity_date_column()  # Ajoutez cette ligne
+                self.add_last_activity_date_column() 
+                self.add_last_payment_date_column()
+                self.add_paid_today_column()  # Ajoutez cette ligne
             logging.info(f"Database initialized successfully: {self.db_path}")
         except Exception as e:
             logging.error(f"Error initializing database: {e}")
@@ -122,11 +124,51 @@ class DatabaseManager:
         except Exception as e:
             logging.error(f"Erreur lors de la vérification/ajout de la colonne last_activity_date : {e}")
 
+    def get_last_insert_id(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT last_insert_rowid()")
+            return cursor.fetchone()[0]
+
+    def add_last_payment_date_column(self):
+        try:
+            # Vérifier si la colonne existe déjà
+            check_query = "PRAGMA table_info(users);"
+            columns = self.fetch_all(check_query)
+            column_names = [column['name'] for column in columns]
+            
+            if 'last_payment_date' not in column_names:
+                query = "ALTER TABLE users ADD COLUMN last_payment_date TEXT;"
+                self.execute(query)
+                logging.info("Colonne last_payment_date ajoutée avec succès.")
+            else:
+                logging.info("La colonne last_payment_date existe déjà.")
+        except Exception as e:
+            logging.error(f"Erreur lors de la vérification/ajout de la colonne last_payment_date : {e}")
+
+    def add_paid_today_column(self):
+        try:
+            # Vérifier si la colonne existe déjà
+            check_query = "PRAGMA table_info(workshops);"
+            columns = self.fetch_all(check_query)
+            column_names = [column['name'] for column in columns]
+            
+            if 'paid_today' not in column_names:
+                query = "ALTER TABLE workshops ADD COLUMN paid_today INTEGER DEFAULT 0;"
+                self.execute(query)
+                logging.info("Colonne paid_today ajoutée avec succès à la table workshops.")
+            else:
+                logging.info("La colonne paid_today existe déjà dans la table workshops.")
+        except Exception as e:
+            logging.error(f"Erreur lors de la vérification/ajout de la colonne paid_today : {e}")
+
 def initialize(self):
     try:
         with self.get_connection() as conn:
             self.create_tables(conn)
             self.add_last_activity_date_column() 
+            self.add_last_payment_date_column()
+            self.add_paid_today_column()  # Ajoutez cette ligne
         logging.info(f"Database initialized successfully: {self.db_path}")
     except Exception as e:
         logging.error(f"Error initializing database: {e}")

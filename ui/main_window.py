@@ -252,7 +252,13 @@ class MainWindow(ctk.CTkFrame):
             if hasattr(self, 'user_management') and self.user_management.winfo_exists():
                 self.user_management.load_users()
             if hasattr(self, 'workshop_history') and self.workshop_history.winfo_exists():
-                self.workshop_history.load_history()
+                self.workshop_history.refresh_workshop_list()
+            if hasattr(self, 'user_edit') and self.user_edit.winfo_exists():
+                self.user_edit.update_user_info()
+            if hasattr(self, 'add_workshop') and self.add_workshop.winfo_exists():
+                self.add_workshop.update_payment_status()
+            if hasattr(self, 'edit_workshop') and self.edit_workshop.winfo_exists():
+                self.edit_workshop.update_payment_status()
         except Exception as e:
             print(f"Erreur lors de la mise à jour des sections : {e}")
             # Vous pouvez également afficher un message d'erreur à l'utilisateur ici

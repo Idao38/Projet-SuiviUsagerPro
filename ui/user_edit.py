@@ -34,21 +34,28 @@ class UserEditFrame(ctk.CTkFrame):
         self.email_entry = self.create_form_field(self.form_frame, "Mail", 4, user.email)
         self.adresse_entry = self.create_form_field(self.form_frame, "Adresse postale", 5, user.adresse)
 
-        # Créez un nouveau Frame pour les boutons
-        button_frame = ctk.CTkFrame(self.form_frame)
-        button_frame.grid(row=6, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        # Créez un nouveau Frame pour les boutons et le statut de paiement
+        self.bottom_frame = ctk.CTkFrame(self.form_frame)
+        self.bottom_frame.grid(row=6, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        self.bottom_frame.grid_columnconfigure(3, weight=1)  # Ajoutez cette ligne pour pousser le statut de paiement à droite
 
         # Bouton Ajouter un atelier
-        self.add_workshop_button = ctk.CTkButton(button_frame, text="Ajouter un atelier", command=self.open_add_workshop)
-        self.add_workshop_button.pack(side=ctk.LEFT, padx=5)
+        self.add_workshop_button = ctk.CTkButton(self.bottom_frame, text="Ajouter un atelier", command=self.open_add_workshop)
+        self.add_workshop_button.grid(row=0, column=0, padx=5)
         
         # Bouton Sauvegarder
-        self.save_button = ctk.CTkButton(button_frame, text="Sauvegarder les modifications", command=self.save_user)
-        self.save_button.pack(side=ctk.LEFT, padx=5)
+        self.save_button = ctk.CTkButton(self.bottom_frame, text="Sauvegarder les modifications", command=self.save_user)
+        self.save_button.grid(row=0, column=1, padx=5)
 
         # Bouton Retour
-        self.back_button = ctk.CTkButton(button_frame, text="Retour à la liste des utilisateurs", command=self.back_to_list)
-        self.back_button.pack(side=ctk.LEFT, padx=5)
+        self.back_button = ctk.CTkButton(self.bottom_frame, text="Retour à la liste des utilisateurs", command=self.back_to_list)
+        self.back_button.grid(row=0, column=2, padx=5)
+
+        # Statut de paiement (déplacé à droite)
+        self.payment_status_label = ctk.CTkLabel(self.bottom_frame, text="Statut de paiement : ")
+        self.payment_status_label.grid(row=0, column=3, padx=(20, 5), sticky="e")
+        self.payment_status_value = ctk.CTkLabel(self.bottom_frame, text="")
+        self.payment_status_value.grid(row=0, column=4, padx=(0, 20), sticky="w")
 
         # Ajout de l'historique des ateliers
         self.history_frame = ctk.CTkScrollableFrame(self.form_frame)
@@ -63,6 +70,8 @@ class UserEditFrame(ctk.CTkFrame):
             ctk.CTkLabel(self.history_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=5, sticky="ew")
 
         self.load_user_workshops()
+
+        self.update_payment_status()
 
     def create_form_field(self, parent, label, row, value):
         ctk.CTkLabel(parent, text=label).grid(row=row, column=0, padx=20, pady=(10, 0), sticky="w")
@@ -183,3 +192,10 @@ class UserEditFrame(ctk.CTkFrame):
             if isinstance(widget, ctk.CTkFrame):
                 widget.destroy()
         self.load_user_workshops()
+
+        # Appelez update_payment_status() dans la méthode update_user_info()
+        self.update_payment_status()
+
+    def update_payment_status(self):
+        status = self.user.get_workshop_payment_status(self.db_manager)
+        self.payment_status_value.configure(text=status)
