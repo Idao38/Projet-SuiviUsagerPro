@@ -69,7 +69,7 @@ class Settings(ctk.CTkFrame):
         self.inactivity_period_var = ctk.StringVar(value=get_inactivity_period())
         self.inactivity_period_menu = ctk.CTkOptionMenu(
             self.inactivity_frame,
-            values=["6", "12", "18", "24"],
+            values=["12", "18", "24", "30", "36"],
             variable=self.inactivity_period_var,
             command=self.update_inactivity_period
         )

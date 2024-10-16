@@ -51,7 +51,7 @@ def set_dark_mode(is_dark):
 
 def get_inactivity_period():
     config = load_config()
-    return config.get("inactivity_period", "12")  # Par défaut 12 mois
+    return config.get("inactivity_period", "12")
 
 def set_inactivity_period(period):
     config = load_config()

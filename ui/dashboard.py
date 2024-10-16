@@ -4,6 +4,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from database.db_manager import DatabaseManager
 import logging
 import matplotlib
+from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 matplotlib.set_loglevel("WARNING")
 
@@ -94,47 +95,99 @@ class Dashboard(ctk.CTkFrame):
 
     def update_graph(self):
         try:
+            # Obtenir la date d'il y a 12 mois
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=365)
+
             data = self.db_manager.fetch_all("""
-                SELECT strftime('%m', date) as month,
-                       SUM(CASE WHEN categorie = 'Individuel' THEN 1 ELSE 0 END) as individual,
-                       SUM(CASE WHEN categorie = 'Administratif' THEN 1 ELSE 0 END) as administrative
+                SELECT strftime('%Y-%m', datetime(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))) as month,
+                       SUM(CASE WHEN categorie = 'Atelier numérique' THEN 1 ELSE 0 END) as numerique,
+                       SUM(CASE WHEN categorie = 'Démarche administrative' THEN 1 ELSE 0 END) as administratif
                 FROM workshops
-                WHERE date >= date('now', '-12 months')
+                WHERE datetime(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) >= ?
                 GROUP BY month
                 ORDER BY month
-            """)
+            """, (start_date.strftime('%Y-%m-%d'),))
             
-            if not data:  # Si data est vide
-                self.graph.figure.clear()
-                self.graph.figure.text(0.5, 0.5, "Aucune donnée disponible", ha='center', va='center')
-                self.graph.draw()
+            logger.info(f"Données récupérées détaillées : {[dict(row) for row in data]}")
+            
+            if not data:
+                logger.warning("Aucune donnée disponible pour le graphique")
+                self.display_no_data_graph()
             else:
-                months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-                individual = [0] * 12
-                administrative = [0] * 12
+                all_months = [
+                    (start_date + timedelta(days=30*i)).strftime('%Y-%m')
+                    for i in range(12)
+                ]
+                month_labels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+                
+                numerique = [0] * 12
+                administratif = [0] * 12
 
-                for row in data:
-                    month_index = int(row[0]) - 1
-                    individual[month_index] = row[1]
-                    administrative[month_index] = row[2]
+                data_dict = {row['month']: row for row in data}
 
-                self.graph_frame.destroy()
-                self.graph_frame = ctk.CTkFrame(self)
-                self.graph_frame.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+                for i, month in enumerate(all_months):
+                    if month in data_dict:
+                        row = data_dict[month]
+                        numerique[i] = int(row['numerique'] or 0)
+                        administratif[i] = int(row['administratif'] or 0)
+                    logger.info(f"Mois {month}: numerique={numerique[i]}, administratif={administratif[i]}")
 
-                fig = Figure(figsize=(10, 4), dpi=100)
-                ax = fig.add_subplot(111)
+                logger.info(f"Données traitées : numerique={numerique}, administratif={administratif}")
 
-                ax.bar(months, individual, label='Atelier individuel', color='#4CAF50')
-                ax.bar(months, administrative, bottom=individual, label='Atelier administratif', color='#2196F3')
-
-                ax.set_ylabel('Nombre d\'ateliers')
-                ax.set_title('Ateliers par mois')
-                ax.legend()
-
-                canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
-                canvas.draw()
-                canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
+                self.display_graph(all_months, month_labels, numerique, administratif)
 
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour du graphique : {e}")
+            logger.exception("Détails de l'erreur:")
+
+    def display_no_data_graph(self):
+        if hasattr(self, 'graph_frame'):
+            self.graph_frame.destroy()
+        self.graph_frame = ctk.CTkFrame(self)
+        self.graph_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        fig = Figure(figsize=(10, 4), dpi=100)
+        ax = fig.add_subplot(111)
+        ax.text(0.5, 0.5, "Aucune donnée disponible", ha='center', va='center', transform=ax.transAxes)
+        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
+
+    def display_graph(self, all_months, month_labels, numerique, administratif):
+        if hasattr(self, 'graph_frame'):
+            self.graph_frame.destroy()
+        self.graph_frame = ctk.CTkFrame(self)
+        self.graph_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        fig = Figure(figsize=(10, 4), dpi=100)
+        ax = fig.add_subplot(111)
+
+        total_workshops = [i + a for i, a in zip(numerique, administratif)]
+        max_workshops = max(total_workshops) if total_workshops else 0
+
+        x = range(len(all_months))
+        ax.bar(x, numerique, label='Atelier numérique', color='#4CAF50')
+        ax.bar(x, administratif, bottom=numerique, label='Démarche administrative', color='#2196F3')
+
+        ax.set_ylabel('Nombre d\'ateliers')
+        ax.set_title('Ateliers par mois')
+        
+        ax.set_ylim(0, max_workshops * 1.1 if max_workshops > 0 else 1)
+        
+        for i, total in enumerate(total_workshops):
+            if total > 0:
+                ax.text(i, total, str(total), ha='center', va='bottom')
+
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+
+        fig.tight_layout()
+        fig.subplots_adjust(bottom=0.2)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"{month_labels[datetime.strptime(m, '%Y-%m').month - 1]}\n{m[:4]}" for m in all_months], rotation=45, ha='right')
+
+        canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
+
+        logger.info("Graphique mis à jour avec succès")

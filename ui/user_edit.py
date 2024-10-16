@@ -135,7 +135,7 @@ class UserEditFrame(ctk.CTkFrame):
         headers = ["Date", "Type d'atelier", "Conseiller", "Payant"]
         
         # Créer une ligne d'en-tête
-        header_frame = ctk.CTkFrame(self.history_frame, fg_color=self.colors["even"])
+        header_frame = ctk.CTkFrame(self.history_frame)
         header_frame.grid(row=0, column=0, columnspan=4, sticky="ew", padx=5, pady=2)
         header_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
 
@@ -143,8 +143,7 @@ class UserEditFrame(ctk.CTkFrame):
             ctk.CTkLabel(header_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=col, padx=10, pady=5, sticky="ew")
 
         for i, workshop in enumerate(workshops, start=1):
-            row_color = self.colors["odd"] if i % 2 else self.colors["even"]
-            row_frame = ctk.CTkFrame(self.history_frame, fg_color=row_color)
+            row_frame = ctk.CTkFrame(self.history_frame)
             row_frame.grid(row=i, column=0, columnspan=4, sticky="ew", padx=5, pady=2)
             row_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
             row_frame.bind("<Button-1>", lambda e, w=workshop: self.on_workshop_click(w))
