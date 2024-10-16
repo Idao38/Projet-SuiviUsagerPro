@@ -4,12 +4,16 @@ from models.user import User
 from models.workshop import Workshop
 from utils.date_utils import convert_to_db_date, convert_from_db_date, is_valid_date
 from datetime import datetime
+from utils.observer import Observer
 
-class UserEditFrame(ctk.CTkFrame):
+class UserEditFrame(ctk.CTkFrame, Observer):
     def __init__(self, master, db_manager, user, show_user_management_callback, show_add_workshop_callback, edit_workshop_callback, update_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.user = user
+        self.user.add_observer(self)  # Ajoutez cette ligne
+        for workshop in Workshop.get_by_user(self.db_manager, self.user.id):
+            workshop.add_observer(self)
         self.show_user_management_callback = show_user_management_callback
         self.show_add_workshop_callback = show_add_workshop_callback
         self.edit_workshop_callback = edit_workshop_callback
@@ -128,6 +132,7 @@ class UserEditFrame(ctk.CTkFrame):
 
         # Sauvegarder les modifications
         self.user.save(self.db_manager)
+        self.user.notify_observers('user_updated', self.user)  # Ajoutez cette ligne
 
         # Vérifiez le statut de paiement
         is_up_to_date = self.user.is_workshop_payment_up_to_date(self.db_manager)
@@ -181,7 +186,8 @@ class UserEditFrame(ctk.CTkFrame):
             self.edit_workshop_callback(workshop)
 
     def update_user_info(self):
-        # Mettez à jour les champs avec les informations les plus récentes de l'utilisateur
+        self.user = User.get_by_id(self.db_manager, self.user.id)  # Rafraîchir l'utilisateur
+        # Mettre à jour les champs du formulaire
         self.nom_entry.delete(0, 'end')
         self.nom_entry.insert(0, self.user.nom)
         self.prenom_entry.delete(0, 'end')
@@ -195,15 +201,23 @@ class UserEditFrame(ctk.CTkFrame):
         self.adresse_entry.delete(0, 'end')
         self.adresse_entry.insert(0, self.user.adresse if self.user.adresse else "")
         
-        # Effacer les ateliers existants et les recharger
+        # Mettre à jour la liste des ateliers
         for widget in self.history_frame.winfo_children():
             if isinstance(widget, ctk.CTkFrame):
                 widget.destroy()
         self.load_user_workshops()
 
-        # Appelez update_payment_status() dans la méthode update_user_info()
+        # Mettre à jour le statut de paiement
         self.update_payment_status()
 
+        # Mettre à jour le titre
+        self.title.configure(text=f"Éditer le profil de {self.user.nom} {self.user.prenom}")
+
     def update_payment_status(self):
+        self.user.calculate_workshop_payment_status(self.db_manager)  # Ajoutez cette ligne
         status = self.user.get_workshop_payment_status(self.db_manager)
         self.payment_status_value.configure(text=status)
+
+    def update(self, observable, *args, **kwargs):
+        if isinstance(observable, User) or isinstance(observable, Workshop):
+            self.update_user_info()

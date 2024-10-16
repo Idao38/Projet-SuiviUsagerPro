@@ -2,9 +2,12 @@ from utils.date_utils import convert_to_db_date, convert_from_db_date
 from datetime import datetime
 import logging
 from models.user import User
+from utils.observer import Observable
 
-class Workshop:
+
+class Workshop(Observable):
     def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, paid=False, date=None, conseiller=None):
+        super().__init__()
         self.id = id
         self.user_id = user_id
         self.description = description
@@ -65,12 +68,15 @@ class Workshop:
                 user.last_activity_date = self.date
                 user.save(db_manager)
         
+        self.notify_observers('workshop_updated', self)
         return self.id
 
+  
     @staticmethod
     def get_all(db_manager):
         query = "SELECT * FROM workshops"
-        return db_manager.fetch_all(query)
+        rows = db_manager.fetch_all(query)
+        return [Workshop.from_db(row) for row in rows]
 
     @staticmethod
     def get_by_id(db_manager, workshop_id):
@@ -171,3 +177,16 @@ class Workshop:
             date=row['date'],
             conseiller=row['conseiller']
         )
+
+    def get_state(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'description': self.description,
+            'categorie': self.categorie,
+            'payant': self.payant,
+            'paid': self.paid, 
+            'date': self.date,
+            'conseiller': self.conseiller
+        }
+

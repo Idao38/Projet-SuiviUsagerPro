@@ -2,11 +2,13 @@ from utils.date_utils import convert_to_db_date, convert_from_db_date
 from datetime import datetime, timedelta
 from utils.config_utils import get_ateliers_entre_paiements, get_default_paid_workshops
 import logging
+from utils.observer import Observable
 
 
 
-class User:
+class User(Observable):
     def __init__(self, id=None, nom="", prenom="", date_naissance=None, telephone="", email=None, adresse=None, date_creation=None, last_activity_date=None, last_payment_date=None):
+        super().__init__()
         self.id = id
         self.nom = nom
         self.prenom = prenom
@@ -63,6 +65,7 @@ class User:
             """
             values = (self.nom, self.prenom, convert_to_db_date(self.date_naissance), self.telephone, self.email, self.adresse, self.date_creation, self.last_activity_date, self.last_payment_date, self.id)
             db_manager.execute(query, values)
+        self.notify_observers('user_updated', self)
 
     @staticmethod
     def get_all(db_manager):
@@ -243,4 +246,21 @@ class User:
     def update_payment_status(self, db_manager):
         self.payment_status = self.get_workshop_payment_status(db_manager)
 
+    def get_state(self):
+        return {
+            'id': self.id,
+            'nom': self.nom,
+            'prenom': self.prenom,
+            'date_naissance': self.date_naissance,
+            'telephone': self.telephone,
+            'email': self.email,
+            'adresse': self.adresse,
+            'last_activity_date': self.last_activity_date
+        }
 
+    def refresh_from_db(self, db_manager):
+        updated_user = User.get_by_id(db_manager, self.id)
+        if updated_user:
+            self.__dict__.update(updated_user.__dict__)
+        self.calculate_workshop_payment_status(db_manager)
+        self.notify_observers('user_updated', self)

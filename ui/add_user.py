@@ -53,15 +53,15 @@ class AddUser(ctk.CTkFrame):
             messagebox.showerror("Erreur", "Veuillez remplir tous les champs obligatoires.")
             return
 
-        new_user = User(nom=nom, prenom=prenom, date_naissance=date_naissance,
-                        telephone=telephone, email=email, adresse=adresse)
-        try:
-            new_user.save(self.db_manager)
-            messagebox.showinfo("Succès", "L'usager a été ajouté avec succès.")
-            self.clear_fields()
-            self.update_callback()
-        except Exception as e:
-            messagebox.showerror("Erreur", f"Impossible d'ajouter l'usager : {str(e)}")
+        new_user = User(nom=nom, prenom=prenom, telephone=telephone, date_naissance=date_naissance, email=email, adresse=adresse)
+        new_user.save(self.db_manager)
+        
+        # Utilisez la méthode create_user de MainWindow
+        self.master.master.create_user(new_user.get_state())
+
+        messagebox.showinfo("Succès", "L'usager a été ajouté avec succès.")
+        self.clear_form()
+        self.update_callback()
 
     def clear_fields(self):
         self.nom_entry.delete(0, 'end')

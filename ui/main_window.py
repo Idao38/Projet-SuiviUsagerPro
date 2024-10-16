@@ -13,6 +13,8 @@ from .user_edit import UserEditFrame
 from theme import set_dark_theme, set_light_theme
 from .add_workshop import AddWorkshop
 from .edit_workshop import EditWorkshop
+from models.user import User
+from models.workshop import Workshop
 
 import logging
 
@@ -20,7 +22,8 @@ class MainWindow(ctk.CTkFrame):
     def __init__(self, master, db_manager, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
-        self.current_frame = None  # Ajoutez cette ligne
+        self.current_frame = None
+        self.user_edit = None  # Ajoutez cette ligne si elle n'existe pas déjà
 
         # Initialiser le mode d'apparence
         self.set_initial_appearance()
@@ -56,6 +59,9 @@ class MainWindow(ctk.CTkFrame):
 
         # Afficher le tableau de bord par défaut
         self.show_dashboard()
+
+        # Configurer les observateurs
+        self.setup_observers()
 
     def set_initial_appearance(self):
         is_dark = get_dark_mode()
@@ -257,10 +263,8 @@ class MainWindow(ctk.CTkFrame):
                 self.user_edit.update_user_info()
             if hasattr(self, 'add_workshop') and self.add_workshop.winfo_exists():
                 self.add_workshop.update_payment_status()
-            if hasattr(self, 'edit_workshop') and self.edit_workshop.winfo_exists():
-                self.edit_workshop.update_payment_status()
         except Exception as e:
-            print(f"Erreur lors de la mise à jour des sections : {e}")
+            logging.error(f"Erreur lors de la mise à jour des sections : {e}")
             # Vous pouvez également afficher un message d'erreur à l'utilisateur ici
 
     def update_appearance(self):
@@ -340,3 +344,28 @@ class MainWindow(ctk.CTkFrame):
         )
         self.edit_workshop.pack(fill="both", expand=True)
         self.current_frame = self.edit_workshop
+
+    def setup_observers(self):
+        users = User.get_all(self.db_manager)
+        if users:
+            for user in users:
+                user.add_observer(self.user_management)
+                user.add_observer(self.dashboard)
+        
+        workshops = Workshop.get_all(self.db_manager)
+        if workshops:
+            for workshop in workshops:
+                workshop.add_observer(self.workshop_history)
+                workshop.add_observer(self.dashboard)
+
+    def create_user(self, user_data):
+        user = User(**user_data)
+        user.save(self.db_manager)
+        user.add_observer(self.user_management)
+        user.add_observer(self.dashboard)
+
+    def create_workshop(self, workshop_data):
+        workshop = Workshop(**workshop_data)
+        workshop.save(self.db_manager)
+        workshop.add_observer(self.workshop_history)
+        workshop.add_observer(self.dashboard)

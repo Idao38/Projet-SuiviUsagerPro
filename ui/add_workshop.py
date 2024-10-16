@@ -99,13 +99,14 @@ class AddWorkshop(ctk.CTkFrame):
             new_workshop.save(self.db_manager)
             if paid:
                 self.user.update_last_payment_date(self.db_manager)
-            self.user.update_payment_status(self.db_manager)
+            self.user.calculate_workshop_payment_status(self.db_manager)  # Ajoutez cette ligne
+            self.user.notify_observers('user_updated', self.user)  # Ajoutez cette ligne
             logging.debug("Atelier sauvegardé avec succès")
             messagebox.showinfo("Succès", "L'atelier a été ajouté avec succès.")
             logging.debug("Message de succès affiché")
             
+         
             self.update_callback()
-            self.update_payment_status()
             self.show_user_edit_callback()
         except Exception as e:
             logging.error(f"Erreur lors de l'ajout de l'atelier : {e}")

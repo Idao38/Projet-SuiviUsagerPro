@@ -5,8 +5,9 @@ from models.workshop import Workshop
 from datetime import datetime, timedelta
 import csv
 from utils.date_utils import convert_from_db_date
+from utils.observer import Observer
 
-class UserManagement(ctk.CTkFrame):
+class UserManagement(ctk.CTkFrame, Observer):
     def __init__(self, master, db_manager, edit_user_callback, edit_workshop_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
@@ -137,3 +138,17 @@ class UserManagement(ctk.CTkFrame):
             self.update_user_list()
         else:
             messagebox.showerror("Erreur", "Utilisateur non trouvé.")
+
+    def update(self, observable, *args, **kwargs):
+        if isinstance(observable, User):
+            self.refresh_user_list()
+        elif isinstance(observable, Workshop):
+            self.refresh_workshop_list()
+
+    def refresh_user_list(self):
+        # Code pour rafraîchir la liste des utilisateurs
+        self.load_users()
+
+    def refresh_workshop_list(self):
+        # Si nécessaire, ajoutez du code pour rafraîchir la liste des ateliers
+        pass
