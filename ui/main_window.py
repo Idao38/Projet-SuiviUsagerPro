@@ -273,6 +273,7 @@ class MainWindow(ctk.CTkFrame):
 
         # Mettre à jour les sections spécifiques
         self.dashboard.update()
+        self.dashboard.update_graph()  # Ajout de cette ligne pour mettre à jour le graphique
         self.add_user.update()
         self.user_management.update()
         self.workshop_history.update()

@@ -166,25 +166,40 @@ class Dashboard(ctk.CTkFrame):
         max_workshops = max(total_workshops) if total_workshops else 0
 
         x = range(len(all_months))
+        
+        # Utiliser les couleurs du thème pour le fond et le texte
+        bg_color = ctk.ThemeManager.theme["CTk"]["fg_color"][1]  # Couleur de fond
+        text_color = ctk.ThemeManager.theme["CTk"]["text"][1]  # Couleur du texte
+
+        # Configurer les couleurs du graphique
+        fig.patch.set_facecolor(bg_color)
+        ax.set_facecolor(bg_color)
+        ax.tick_params(colors=text_color)
+        ax.spines['bottom'].set_color(text_color)
+        ax.spines['top'].set_color(text_color)
+        ax.spines['right'].set_color(text_color)
+        ax.spines['left'].set_color(text_color)
+
+        # Garder les couleurs actuelles pour les barres
         ax.bar(x, numerique, label='Atelier numérique', color='#4CAF50')
         ax.bar(x, administratif, bottom=numerique, label='Démarche administrative', color='#2196F3')
 
-        ax.set_ylabel('Nombre d\'ateliers')
-        ax.set_title('Ateliers par mois')
+        ax.set_ylabel('Nombre d\'ateliers', color=text_color)
+        ax.set_title('Ateliers par mois', color=text_color)
         
         ax.set_ylim(0, max_workshops * 1.1 if max_workshops > 0 else 1)
         
         for i, total in enumerate(total_workshops):
             if total > 0:
-                ax.text(i, total, str(total), ha='center', va='bottom')
+                ax.text(i, total, str(total), ha='center', va='bottom', color=text_color)
 
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2, facecolor=bg_color, edgecolor=text_color, labelcolor=text_color)
 
         fig.tight_layout()
         fig.subplots_adjust(bottom=0.2)
 
         ax.set_xticks(x)
-        ax.set_xticklabels([f"{month_labels[datetime.strptime(m, '%Y-%m').month - 1]}\n{m[:4]}" for m in all_months], rotation=45, ha='right')
+        ax.set_xticklabels([f"{month_labels[datetime.strptime(m, '%Y-%m').month - 1]}\n{m[:4]}" for m in all_months], rotation=45, ha='right', color=text_color)
 
         canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
         canvas.draw()
