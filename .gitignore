@@ -41,11 +41,13 @@ config.ini
 # Fichiers d'export
 export_usagers_*.csv
 .csv
+*/exports
 
 # Fichiers de build
 build/
 dist/
 *.egg-info/
+*.spec
 
 # Fichiers de documentation générés
 docs/_build/
@@ -59,3 +61,5 @@ run_tests.py
 
 # Fichiers spécifiques à CustomTkinter (si nécessaire)
 # Ajoutez ici des fichiers spécifiques à CustomTkinter si besoin
+exports/users_export_20241019_151605.csv
+exports/workshops_export_20241019_151605.csv

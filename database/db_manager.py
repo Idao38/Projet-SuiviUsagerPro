@@ -1,8 +1,10 @@
 import sqlite3
+import os
 import logging
 from contextlib import contextmanager
 from models.user import User
 from models.workshop import Workshop
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +16,31 @@ class DatabaseManager:
     def initialize(self):
         try:
             with self.get_connection() as conn:
-                self.create_tables(conn)
-                self._add_columns()
-            logging.info(f"Base de données initialisée avec succès : {self.db_path}")
+                cursor = conn.cursor()
+                
+                # Déterminer le chemin correct vers schema.sql
+                if getattr(sys, 'frozen', False):
+                    # Si l'application est "gelée" (exécutable)
+                    application_path = sys._MEIPASS
+                else:
+                    # Si l'application est en cours d'exécution à partir du script
+                    application_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                
+                schema_path = os.path.join(application_path, 'database', 'schema.sql')
+                
+                logging.info(f"Chemin du schéma SQL : {schema_path}")
+                if not os.path.exists(schema_path):
+                    logging.error(f"Le fichier schema.sql n'existe pas à l'emplacement : {schema_path}")
+                    raise FileNotFoundError(f"schema.sql non trouvé : {schema_path}")
+                
+                with open(schema_path, 'r') as schema_file:
+                    schema = schema_file.read()
+                cursor.executescript(schema)
+            logging.info("Base de données initialisée avec succès.")
         except Exception as e:
-            logging.error(f"Erreur lors de l'initialisation de la base de données : {e}")
+            logging.error(f"Erreur détaillée lors de l'initialisation de la base de données : {str(e)}")
+            logging.error(f"Chemin de la base de données : {self.db_path}")
+            raise
 
     @contextmanager
     def get_connection(self):
@@ -124,3 +146,35 @@ class DatabaseManager:
             finally:
                 self.connection = None
         logging.info("Connexion à la base de données fermée.")
+
+    def get_connection(self):
+        if self.connection is None:
+            try:
+                self.connection = sqlite3.connect(self.db_path)
+                self.connection.row_factory = sqlite3.Row
+            except sqlite3.OperationalError as e:
+                logging.error(f"Erreur lors de la connexion à la base de données : {e}")
+                # Vérifier si le dossier parent existe
+                parent_dir = os.path.dirname(self.db_path)
+                if not os.path.exists(parent_dir):
+                    try:
+                        os.makedirs(parent_dir)
+                        logging.info(f"Dossier créé : {parent_dir}")
+                        # Réessayer la connexion
+                        self.connection = sqlite3.connect(self.db_path)
+                        self.connection.row_factory = sqlite3.Row
+                    except Exception as e:
+                        logging.error(f"Impossible de créer le dossier de la base de données : {e}")
+                        raise
+                else:
+                    raise
+        return self.connection
+
+    def begin_transaction(self):
+        self.connection.execute("BEGIN TRANSACTION")
+
+    def commit_transaction(self):
+        self.connection.commit()
+
+    def rollback_transaction(self):
+        self.connection.rollback()

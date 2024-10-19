@@ -288,12 +288,17 @@ class MainWindow(ctk.CTkFrame):
                 widget.update()
 
         # Mettre à jour les sections spécifiques
-        self.dashboard.update()
-        self.dashboard.update_graph()  # Ajout de cette ligne pour mettre à jour le graphique
-        self.add_user.update()
-        self.user_management.update()
-        self.workshop_history.update()
-        self.settings.update()
+        if hasattr(self, 'dashboard') and self.dashboard.winfo_exists():
+            self.dashboard.update()
+            self.dashboard.update_graph()
+        if hasattr(self, 'add_user') and self.add_user.winfo_exists():
+            self.add_user.update()
+        if hasattr(self, 'user_management') and self.user_management.winfo_exists():
+            self.user_management.update()
+        if hasattr(self, 'workshop_history') and self.workshop_history.winfo_exists():
+            self.workshop_history.update()
+        if hasattr(self, 'settings') and self.settings.winfo_exists():
+            self.settings.update()
 
     def show_add_workshop(self, user):
         logging.debug(f"Début de show_add_workshop avec user: {user}")

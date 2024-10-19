@@ -104,10 +104,10 @@ class Dashboard(ctk.CTkFrame):
                        SUM(CASE WHEN categorie = 'Atelier numérique' THEN 1 ELSE 0 END) as numerique,
                        SUM(CASE WHEN categorie = 'Démarche administrative' THEN 1 ELSE 0 END) as administratif
                 FROM workshops
-                WHERE date >= ?
+                WHERE date >= ? AND date <= ?
                 GROUP BY month
                 ORDER BY month
-            """, (start_date.strftime('%Y-%m-%d'),))
+            """, (start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')))
             
             logger.info(f"Données récupérées détaillées : {[dict(row) for row in data]}")
             
@@ -116,10 +116,13 @@ class Dashboard(ctk.CTkFrame):
                 self.display_no_data_graph()
                 return
 
-            all_months = [
-                (start_date + timedelta(days=30*i)).strftime('%Y-%m')
-                for i in range(12)
-            ]
+            all_months = []
+            current_date = end_date
+            for _ in range(12):
+                all_months.append(current_date.strftime('%Y-%m'))
+                current_date = current_date.replace(day=1) - timedelta(days=1)  # Aller au mois précédent
+            all_months.reverse()  # Inverser la liste pour avoir l'ordre chronologique
+
             month_labels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
             
             numerique = [0] * 12
@@ -181,6 +184,8 @@ class Dashboard(ctk.CTkFrame):
         ax.spines['top'].set_color(text_color)
         ax.spines['right'].set_color(text_color)
         ax.spines['left'].set_color(text_color)
+
+        logger.debug(f"Couleur de fond : {bg_color}, Couleur du texte : {text_color}")
 
         # Garder les couleurs actuelles pour les barres
         ax.bar(x, numerique, label='Atelier numérique', color='#4CAF50')

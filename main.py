@@ -5,16 +5,31 @@ from config import get_dark_mode
 from theme import set_dark_theme, set_light_theme
 import os
 import logging
+import sys
+import appdirs
+from utils.observer import Observable
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
-class MainApplication(ctk.CTk):
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        # Si l'application est "gelée" (exécutable)
+        return os.path.dirname(sys.executable)
+    else:
+        # Si l'application est en cours d'exécution à partir du script
+        return os.path.dirname(os.path.abspath(__file__))
+
+
+class MainApplication(ctk.CTk, Observable):
     def __init__(self):
         super().__init__()
+        Observable.__init__(self)
+        
+        logging.debug("Initialisation de MainApplication")
         
         self.geometry("1100x700")
         self.title("Gestion des Usagers - Version " + VERSION)
@@ -28,8 +43,9 @@ class MainApplication(ctk.CTk):
         else:
             set_light_theme()
 
-        # Créer le dossier data s'il n'existe pas
-        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        # Définir le dossier de données de l'application
+        base_path = get_base_path()
+        data_dir = os.path.join(base_path, 'data')
         os.makedirs(data_dir, exist_ok=True)
         
         # Initialiser le DatabaseManager avec un chemin persistant
@@ -37,29 +53,53 @@ class MainApplication(ctk.CTk):
         self.db_manager = DatabaseManager(db_path)
         self.db_manager.initialize()
         
+        logging.debug("MainWindow créé")
+        
         self.main_window = MainWindow(self, db_manager=self.db_manager, update_callback=self.update_interface)
-        self.main_window.grid(row=0, column=0, sticky="nsew")
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
+        self.main_window.pack(fill=ctk.BOTH, expand=True)
+        self.add_observer(self.main_window.dashboard)
         
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.bind("<Configure>", self.on_resize)
+
+        self.last_theme = None
+
+        logging.debug("Interface mise à jour")
+        self.update_idletasks()
+        self.update()
 
     def update_interface(self):
-        # Mettez à jour toutes les parties nécessaires de l'interface utilisateur
-        if hasattr(self.main_window, 'user_management'):
-            self.main_window.user_management.refresh_user_list()
-        if hasattr(self.main_window, 'workshop_history'):
-            self.main_window.workshop_history.refresh_workshop_list()
-        # Ajoutez d'autres mises à jour si nécessaire
+        self.notify_observers()
         logging.debug("Interface mise à jour")
 
     def on_closing(self):
         self.main_window.on_closing()
         self.quit()
 
+    def on_resize(self, event):
+        current_theme = ctk.get_appearance_mode()
+        if hasattr(self, 'last_theme') and self.last_theme != current_theme:
+            self.notify_observers()
+        self.last_theme = current_theme
+
 
 def main():
+    logging.info(f"Chemin d'exécution : {os.getcwd()}")
+    logging.info(f"Chemin du script : {os.path.abspath(__file__)}")
+    logging.info(f"sys.executable : {sys.executable}")
+    logging.info(f"sys._MEIPASS (si disponible) : {getattr(sys, '_MEIPASS', 'Non disponible')}")
+
+    base_path = get_base_path()
+    data_dir = os.path.join(base_path, 'data')
+    os.makedirs(data_dir, exist_ok=True)
+    logging.info(f"Dossier de données : {data_dir}")
+    
+    db_path = os.path.join(data_dir, 'suivi_usager.db')
+    logging.info(f"Chemin de la base de données : {db_path}")
+
+    logging.debug("Création de MainApplication")
     app = MainApplication()
+    logging.debug("Démarrage de la boucle principale")
     app.mainloop()
 
 if __name__ == "__main__":

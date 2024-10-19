@@ -13,13 +13,18 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 
 class CSVExporter(Observable):
-    export_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'exports')
-
     def __init__(self, db_manager):
         super().__init__()
         self.db_manager = db_manager
-        if not os.path.exists(self.export_dir):
-            os.makedirs(self.export_dir)
+        self.export_dir = os.path.join(os.path.dirname(db_manager.db_path), 'exports')
+        try:
+            if not os.path.exists(self.export_dir):
+                os.makedirs(self.export_dir)
+            logging.info(f"Répertoire d'exportation : {self.export_dir}")
+        except OSError as e:
+            logging.error(f"Impossible de créer le répertoire d'exportation : {e}")
+            self.export_dir = os.path.expanduser("~")
+            logging.info(f"Utilisation du répertoire alternatif : {self.export_dir}")
 
     def export_users(self):
         file_path = os.path.join(self.export_dir, f"users_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
@@ -145,76 +150,57 @@ class CSVExporter(Observable):
             return False, f"Erreur lors de l'exportation des ateliers : {str(e)}"
 
     def import_data(self, file_path):
-        logging.info(f"Début de l'importation du fichier : {file_path}")
-        errors = []
-        imported_count = {'users': 0, 'workshops': 0}
-        
-        if not os.path.exists(file_path):
-            logging.error(f"Le fichier {file_path} n'existe pas.")
-            return False, f"Le fichier {file_path} n'existe pas."
-        
         try:
-            with self.db_manager.get_connection() as conn:
-                conn.execute("BEGIN TRANSACTION")
-                logging.info("Transaction commencée")
-                
-                with open(file_path, 'r', newline='', encoding='utf-8-sig') as csvfile:
-                    logging.info(f"Fichier ouvert : {file_path}")
-                    # Utiliser un Sniffer pour détecter automatiquement le délimiteur
-                    sample = csvfile.read(1024)
-                    csvfile.seek(0)
-                    try:
-                        dialect = csv.Sniffer().sniff(sample)
-                        logging.info(f"Dialecte détecté : {dialect}")
-                    except csv.Error as e:
-                        logging.error(f"Erreur lors de la détection du dialecte CSV : {e}")
-                        return False, f"Erreur lors de la détection du format CSV : {e}"
-                    
-                    reader = csv.DictReader(csvfile, dialect=dialect)
-                    headers = reader.fieldnames
-                    logging.info(f"En-têtes détectés : {headers}")
-                    
-                    if not headers:
-                        logging.error("Aucun en-tête détecté dans le fichier CSV")
-                        return False, "Format de fichier non reconnu ou invalide. Aucun en-tête détecté."
-                    
-                    if 'ID' in headers and all(header in headers for header in ['Nom', 'Prénom']):
-                        logging.info("Importation d'utilisateurs détectée")
-                        for row in reader:
-                            try:
-                                logging.debug(f"Tentative d'importation de l'utilisateur : {row}")
-                                user = self.import_user(row)
-                                user.save(self.db_manager)
-                                logging.info(f"Utilisateur importé avec succès : ID {user.id}")
-                                imported_count['users'] += 1
-                            except Exception as e:
-                                error_msg = f"Erreur lors de l'importation de l'utilisateur {row.get('ID', 'inconnu')}: {str(e)}"
-                                logging.error(error_msg)
-                                errors.append(error_msg)
-                    elif 'User ID' in headers and all(header in headers for header in ['Description', 'Catégorie', 'Payant', 'Payé', 'Date', 'Conseiller']):
-                        logging.info("Importation d'ateliers détectée")
-                        for row in reader:
-                            try:
-                                logging.debug(f"Tentative d'importation de l'atelier : {row}")
-                                workshop = self.import_workshop(row)
-                                workshop.save(self.db_manager)
-                                logging.info(f"Atelier importé avec succès : ID {workshop.id}")
-                                imported_count['workshops'] += 1
-                            except Exception as e:
-                                error_msg = f"Erreur lors de l'importation de l'atelier pour l'utilisateur {row.get('User ID', 'inconnu')}: {str(e)}"
-                                logging.error(error_msg)
-                                errors.append(error_msg)
-                    else:
-                        logging.error(f"Format de fichier non reconnu. En-têtes : {headers}")
-                        return False, "Format de fichier non reconnu. Assurez-vous d'importer un fichier CSV d'utilisateurs ou d'ateliers valide."
-                
-                conn.execute("COMMIT")
-                logging.info("Transaction validée avec succès")
-            
+            logging.info(f"Début de l'importation du fichier : {file_path}")
+            self.db_manager.begin_transaction()
+            logging.info("Transaction commencée")
+
+            with open(file_path, 'r', newline='', encoding='utf-8') as csvfile:
+                dialect = csv.Sniffer().sniff(csvfile.read(1024))
+                csvfile.seek(0)
+                reader = csv.reader(csvfile, dialect)
+                headers = next(reader)
+                logging.info(f"En-têtes détectés : {headers}")
+
+                imported_count = {'users': 0, 'workshops': 0}
+                errors = []
+
+                if 'Nom' in headers and 'Prénom' in headers:
+                    logging.info("Importation d'utilisateurs détectée")
+                    for row in reader:
+                        try:
+                            user = self.import_user(dict(zip(headers, row)))
+                            user.save(self.db_manager)
+                            logging.info(f"Utilisateur importé avec succès : ID {user.id}")
+                            imported_count['users'] += 1
+                        except Exception as e:
+                            error_msg = f"Erreur lors de l'importation de l'utilisateur {row[0]} {row[1]}: {str(e)}"
+                            logging.error(error_msg)
+                            errors.append(error_msg)
+                elif 'User ID' in headers and all(header in headers for header in ['Description', 'Catégorie', 'Payant', 'Payé', 'Date', 'Conseiller']):
+                    logging.info("Importation d'ateliers détectée")
+                    for row in reader:
+                        try:
+                            workshop = self.import_workshop(dict(zip(headers, row)))
+                            workshop.save(self.db_manager)
+                            logging.info(f"Atelier importé avec succès : ID {workshop.id}")
+                            imported_count['workshops'] += 1
+                        except Exception as e:
+                            error_msg = f"Erreur lors de l'importation de l'atelier pour l'utilisateur {row[headers.index('User ID')]}: {str(e)}"
+                            logging.error(error_msg)
+                            errors.append(error_msg)
+                else:
+                    logging.error(f"Format de fichier non reconnu. En-têtes : {headers}")
+                    self.db_manager.rollback_transaction()
+                    return False, "Format de fichier non reconnu. Assurez-vous d'importer un fichier CSV d'utilisateurs ou d'ateliers valide."
+
+            self.db_manager.commit_transaction()
+            logging.info("Transaction validée avec succès")
             logging.info(f"Importation terminée. Utilisateurs importés : {imported_count['users']}, Ateliers importés : {imported_count['workshops']}")
             return True, f"Importation réussie. {imported_count['users']} utilisateurs et {imported_count['workshops']} ateliers importés."
-        
+
         except Exception as e:
+            self.db_manager.rollback_transaction()
             logging.error(f"Erreur lors de l'importation : {str(e)}", exc_info=True)
             return False, f"Une erreur s'est produite lors de l'importation : {str(e)}"
 

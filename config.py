@@ -2,8 +2,9 @@ import json
 import os
 import customtkinter as ctk
 from utils.config_utils import *
+import sys
 
-CONFIG_FILE = os.environ.get("CONFIG_FILE", "config.json")
+CONFIG_FILE = os.path.join(os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(__file__), "config.json")
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
