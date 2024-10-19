@@ -19,9 +19,10 @@ from models.workshop import Workshop
 import logging
 
 class MainWindow(ctk.CTkFrame):
-    def __init__(self, master, db_manager, **kwargs):
+    def __init__(self, master, db_manager, update_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
+        self.update_callback = update_callback
         self.current_frame = None
         self.user_edit = None  # Ajoutez cette ligne si elle n'existe pas déjà
 
@@ -55,7 +56,7 @@ class MainWindow(ctk.CTkFrame):
         )
         self.workshop_history = WorkshopHistory(self.main_content, db_manager=self.db_manager)
         self.settings = Settings(self.main_content, db_manager=self.db_manager, main_window=self)
-        self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
+        self.data_management = DataManagement(self.main_content, db_manager=self.db_manager, update_callback=self.update_all_sections)
 
         # Afficher le tableau de bord par défaut
         self.show_dashboard()
@@ -205,7 +206,7 @@ class MainWindow(ctk.CTkFrame):
 
     def show_data_management(self):
         self.clear_main_content()
-        self.data_management = DataManagement(self.main_content, db_manager=self.db_manager)
+        self.data_management = DataManagement(self.main_content, db_manager=self.db_manager, update_callback=self.update_all_sections)
         self.data_management.pack(fill="both", expand=True)
         self.current_frame = self.data_management
 

@@ -1,6 +1,6 @@
 import unittest
 from utils.date_utils import is_valid_date, convert_to_db_date, convert_from_db_date
-from utils.csv_export import CSVExporter
+from utils.csv_import_export import CSVExporter
 from .test_base import BaseTestCase
 import os
 import tempfile

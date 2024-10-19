@@ -100,11 +100,11 @@ class Dashboard(ctk.CTkFrame):
             start_date = end_date - timedelta(days=365)
 
             data = self.db_manager.fetch_all("""
-                SELECT strftime('%Y-%m', datetime(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))) as month,
+                SELECT strftime('%Y-%m', date) as month,
                        SUM(CASE WHEN categorie = 'Atelier numérique' THEN 1 ELSE 0 END) as numerique,
                        SUM(CASE WHEN categorie = 'Démarche administrative' THEN 1 ELSE 0 END) as administratif
                 FROM workshops
-                WHERE datetime(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) >= ?
+                WHERE date >= ?
                 GROUP BY month
                 ORDER BY month
             """, (start_date.strftime('%Y-%m-%d'),))
@@ -114,32 +114,33 @@ class Dashboard(ctk.CTkFrame):
             if not data:
                 logger.warning("Aucune donnée disponible pour le graphique")
                 self.display_no_data_graph()
-            else:
-                all_months = [
-                    (start_date + timedelta(days=30*i)).strftime('%Y-%m')
-                    for i in range(12)
-                ]
-                month_labels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
-                
-                numerique = [0] * 12
-                administratif = [0] * 12
+                return
 
-                data_dict = {row['month']: row for row in data}
+            all_months = [
+                (start_date + timedelta(days=30*i)).strftime('%Y-%m')
+                for i in range(12)
+            ]
+            month_labels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+            
+            numerique = [0] * 12
+            administratif = [0] * 12
 
-                for i, month in enumerate(all_months):
-                    if month in data_dict:
-                        row = data_dict[month]
-                        numerique[i] = int(row['numerique'] or 0)
-                        administratif[i] = int(row['administratif'] or 0)
-                    logger.info(f"Mois {month}: numerique={numerique[i]}, administratif={administratif[i]}")
+            data_dict = {row['month']: row for row in data}
 
-                logger.info(f"Données traitées : numerique={numerique}, administratif={administratif}")
+            for i, month in enumerate(all_months):
+                if month in data_dict:
+                    row = data_dict[month]
+                    numerique[i] = int(row['numerique'] or 0)
+                    administratif[i] = int(row['administratif'] or 0)
+                logger.info(f"Mois {month}: numerique={numerique[i]}, administratif={administratif[i]}")
 
-                self.display_graph(all_months, month_labels, numerique, administratif)
+            logger.info(f"Données traitées : numerique={numerique}, administratif={administratif}")
 
+            self.display_graph(all_months, month_labels, numerique, administratif)
         except Exception as e:
             logger.error(f"Erreur lors de la mise à jour du graphique : {e}")
             logger.exception("Détails de l'erreur:")
+            self.display_no_data_graph()
 
     def display_no_data_graph(self):
         if hasattr(self, 'graph_frame'):
@@ -154,6 +155,7 @@ class Dashboard(ctk.CTkFrame):
         canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
 
     def display_graph(self, all_months, month_labels, numerique, administratif):
+        logging.info(f"Affichage du graphique avec : {len(all_months)} mois, {len(numerique)} ateliers numériques, {len(administratif)} démarches administratives")
         if hasattr(self, 'graph_frame'):
             self.graph_frame.destroy()
         self.graph_frame = ctk.CTkFrame(self)
@@ -206,3 +208,20 @@ class Dashboard(ctk.CTkFrame):
         canvas.get_tk_widget().pack(fill=ctk.BOTH, expand=True)
 
         logger.info("Graphique mis à jour avec succès")
+
+    def get_graph_data(self):
+        # Méthode pour récupérer les données du graphique
+        data = ...  # Votre logique pour récupérer les données
+        logging.info(f"Données récupérées pour le graphique : {data}")
+        return data
+
+    def import_data(self, file_path):
+        # Votre code d'importation ici
+        success, message = self.csv_exporter.import_data(file_path)
+        if success:
+            self.refresh_dashboard()  # Méthode pour mettre à jour le dashboard
+        return success, message
+
+    def refresh_dashboard(self):
+        data = self.get_graph_data()
+        self.display_graph(*data)

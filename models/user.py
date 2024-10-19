@@ -49,23 +49,30 @@ class User(Observable):
         }
 
     def save(self, db_manager):
-        if self.id is None:
-            query = """
-                INSERT INTO users (nom, prenom, date_naissance, telephone, email, adresse, date_creation, last_activity_date, last_payment_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            values = (self.nom, self.prenom, convert_to_db_date(self.date_naissance), self.telephone, self.email, self.adresse, self.date_creation, self.last_activity_date, None)
-            db_manager.execute(query, values)
-            self.id = db_manager.get_last_insert_id()
-        else:
-            query = """
-                UPDATE users
-                SET nom=?, prenom=?, date_naissance=?, telephone=?, email=?, adresse=?, date_creation=?, last_activity_date=?, last_payment_date=?
-                WHERE id=?
-            """
-            values = (self.nom, self.prenom, convert_to_db_date(self.date_naissance), self.telephone, self.email, self.adresse, self.date_creation, self.last_activity_date, self.last_payment_date, self.id)
-            db_manager.execute(query, values)
-        self.notify_observers('user_updated', self)
+        try:
+            if self.id is None:
+                query = """
+                    INSERT INTO users (nom, prenom, date_naissance, telephone, email, adresse, date_creation, last_activity_date, last_payment_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                values = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.date_creation, self.last_activity_date, self.last_payment_date)
+                cursor = db_manager.execute(query, values)
+                self.id = cursor.lastrowid
+                logging.info(f"Nouvel utilisateur inséré avec l'ID : {self.id}")
+            else:
+                query = """
+                    UPDATE users
+                    SET nom=?, prenom=?, date_naissance=?, telephone=?, email=?, adresse=?, date_creation=?, last_activity_date=?, last_payment_date=?
+                    WHERE id=?
+                """
+                values = (self.nom, self.prenom, self.date_naissance, self.telephone, self.email, self.adresse, self.date_creation, self.last_activity_date, self.last_payment_date, self.id)
+                db_manager.execute(query, values)
+                logging.info(f"Utilisateur mis à jour avec l'ID : {self.id}")
+            self.notify_observers('user_updated', self)
+            return True
+        except Exception as e:
+            logging.error(f"Erreur lors de la sauvegarde de l'utilisateur : {str(e)}")
+            return False
 
     @staticmethod
     def get_all(db_manager):
@@ -264,3 +271,24 @@ class User(Observable):
             self.__dict__.update(updated_user.__dict__)
         self.calculate_workshop_payment_status(db_manager)
         self.notify_observers('user_updated', self)
+
+    def get_workshops(self, db_manager):
+        from models.workshop import Workshop  # Import local pour éviter les imports circulaires
+        return Workshop.get_by_user(db_manager, self.id)
+
+    def refresh_user_list(self):
+        # Code pour rafraîchir la liste des utilisateurs
+        self.load_users()
+
+    def refresh_workshop_list(self):
+        # Si nécessaire, ajoutez du code pour rafraîchir la liste des ateliers
+        pass
+
+    def update_last_activity_date(self, db_manager, activity_date):
+        if not self.last_activity_date or activity_date > self.last_activity_date:
+            self.last_activity_date = activity_date
+            query = "UPDATE users SET last_activity_date = ? WHERE id = ?"
+            db_manager.execute(query, (activity_date, self.id))
+
+
+

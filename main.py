@@ -7,41 +7,59 @@ import os
 import logging
 
 
-VERSION = "0.9.1"
+VERSION = "0.9.3"
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def main():
-    # Initialiser le mode d'apparence en fonction de la configuration
-    is_dark = get_dark_mode()
-    ctk.set_appearance_mode("dark" if is_dark else "light")
-    if is_dark:
-        set_dark_theme()
-    else:
-        set_light_theme()
-    
-    app = ctk.CTk()
-    app.geometry("1100x700")
-    app.title("Gestion des Usagers")
-    app.minsize(1000, 600)
+class MainApplication(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        
+        self.geometry("1100x700")
+        self.title("Gestion des Usagers")
+        self.minsize(1000, 600)
 
-    # Créer le dossier data s'il n'existe pas
-    data_dir = os.path.join(os.path.dirname(__file__), 'data')
-    os.makedirs(data_dir, exist_ok=True)
-    
-    # Initialiser le DatabaseManager avec un chemin persistant
-    db_path = os.path.join(data_dir, 'suivi_usager.db')
-    db_manager = DatabaseManager(db_path)
-    db_manager.initialize()
-    
-    main_window = MainWindow(app, db_manager=db_manager)
-    main_window.grid(row=0, column=0, sticky="nsew")
-    app.grid_rowconfigure(0, weight=1)
-    app.grid_columnconfigure(0, weight=1)
-    
-    app.protocol("WM_DELETE_WINDOW", main_window.on_closing)  # Gestion de la fermeture de l'application
-    
+        # Initialiser le mode d'apparence en fonction de la configuration
+        is_dark = get_dark_mode()
+        ctk.set_appearance_mode("dark" if is_dark else "light")
+        if is_dark:
+            set_dark_theme()
+        else:
+            set_light_theme()
+
+        # Créer le dossier data s'il n'existe pas
+        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        
+        # Initialiser le DatabaseManager avec un chemin persistant
+        db_path = os.path.join(data_dir, 'suivi_usager.db')
+        self.db_manager = DatabaseManager(db_path)
+        self.db_manager.initialize()
+        
+        self.main_window = MainWindow(self, db_manager=self.db_manager, update_callback=self.update_interface)
+        self.main_window.grid(row=0, column=0, sticky="nsew")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def update_interface(self):
+        # Mettez à jour toutes les parties nécessaires de l'interface utilisateur
+        if hasattr(self.main_window, 'user_management'):
+            self.main_window.user_management.refresh_user_list()
+        if hasattr(self.main_window, 'workshop_history'):
+            self.main_window.workshop_history.refresh_workshop_list()
+        # Ajoutez d'autres mises à jour si nécessaire
+        logging.debug("Interface mise à jour")
+
+    def on_closing(self):
+        self.main_window.on_closing()
+        self.quit()
+
+
+def main():
+    app = MainApplication()
     app.mainloop()
 
 if __name__ == "__main__":

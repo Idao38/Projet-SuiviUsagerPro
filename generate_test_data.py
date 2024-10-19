@@ -55,14 +55,18 @@ def generate_workshops(num_workshops):
         if paid:
             # Mise à jour de la date du dernier paiement si l'atelier est payé
             user.update_last_payment_date(db_manager)
+        
+        # Mise à jour du statut de paiement de l'utilisateur
+        user.calculate_workshop_payment_status(db_manager)
 
 def update_payment_status():
     users = User.get_all(db_manager)
     for user in users:
-        workshops = Workshop.get_user_workshops(db_manager, user.id)
+        workshops = user.get_workshops(db_manager)  # Utilisation de la nouvelle méthode
         for workshop in workshops:
             if workshop.paid:
                 user.update_last_payment_date(db_manager)
+        user.calculate_workshop_payment_status(db_manager)
 
 if __name__ == "__main__":
     num_users = 250  # Nombre d'utilisateurs à générer

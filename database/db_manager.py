@@ -19,13 +19,12 @@ class DatabaseManager:
             logging.info(f"Base de données initialisée avec succès : {self.db_path}")
         except Exception as e:
             logging.error(f"Erreur lors de l'initialisation de la base de données : {e}")
-            raise
 
     @contextmanager
     def get_connection(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
         try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
             yield conn
         finally:
             conn.close()
@@ -33,25 +32,29 @@ class DatabaseManager:
     def execute(self, query, params=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                cursor.execute(query, params or ())
-                conn.commit()
-                return cursor
-            except sqlite3.Error as e:
-                logging.error(f"Erreur d'exécution de la requête : {e}")
-                conn.rollback()
-                raise
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+            conn.commit()
+            return cursor
 
     def fetch_one(self, query, params=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(query, params or ())
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
             return cursor.fetchone()
 
     def fetch_all(self, query, params=None):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(query, params or ())
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
             return cursor.fetchall()
 
     def create_tables(self, connection):
@@ -103,6 +106,14 @@ class DatabaseManager:
             logging.info(f"Colonne {column} ajoutée avec succès à la table {table}.")
         else:
             logging.info(f"La colonne {column} existe déjà dans la table {table}.")
+
+    def commit(self):
+        with self.get_connection() as conn:
+            conn.commit()
+
+    def rollback(self):
+        with self.get_connection() as conn:
+            conn.rollback()
 
     def close(self):
         if self.connection:

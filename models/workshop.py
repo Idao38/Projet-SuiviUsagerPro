@@ -5,6 +5,7 @@ from models.user import User
 from utils.observer import Observable
 
 
+
 class Workshop(Observable):
     def __init__(self, id=None, user_id=None, description=None, categorie=None, payant=False, paid=False, date=None, conseiller=None):
         super().__init__()
@@ -57,16 +58,9 @@ class Workshop(Observable):
             """
             params = (self.user_id, self.description, self.categorie, self.payant, self.paid, self.date, self.conseiller, self.id)
 
-        db_manager.execute(query, params)
+        cursor = db_manager.execute(query, params)
         if self.id is None:
-            self.id = db_manager.get_last_insert_id()
-        
-        # Mise à jour de la date de dernière activité de l'utilisateur
-        if self.user_id:
-            user = User.get_by_id(db_manager, self.user_id)
-            if user:
-                user.last_activity_date = self.date
-                user.save(db_manager)
+            self.id = cursor.lastrowid
         
         self.notify_observers('workshop_updated', self)
         return self.id
@@ -89,11 +83,11 @@ class Workshop(Observable):
             return workshop
         return None
 
-    @staticmethod
-    def get_by_user(db_manager, user_id):
+    @classmethod
+    def get_by_user(cls, db_manager, user_id):
         query = "SELECT * FROM workshops WHERE user_id = ? ORDER BY date DESC"
         rows = db_manager.fetch_all(query, (user_id,))
-        return [Workshop.from_db(row) for row in rows]
+        return [cls.from_db(row) for row in rows]
 
     @classmethod
     def delete(cls, db_manager, workshop_id):
@@ -190,3 +184,19 @@ class Workshop(Observable):
             'conseiller': self.conseiller
         }
 
+    @property
+    def user(self):
+        from models.user import User  # Import local pour éviter les imports circulaires
+        return User.get_by_id(self.db_manager, self.user_id) if self.user_id else None
+
+    def get_user(self, db_manager):
+        from models.user import User  # Import local pour éviter les imports circulaires
+        return User.get_by_id(db_manager, self.user_id) if self.user_id else None
+
+    def refresh_user_list(self):
+        # Code pour rafraîchir la liste des utilisateurs
+        self.load_users()
+
+    def refresh_workshop_list(self):
+        # Si nécessaire, ajoutez du code pour rafraîchir la liste des ateliers
+        pass

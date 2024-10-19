@@ -48,14 +48,15 @@ class WorkshopHistory(ctk.CTkFrame):
     def display_workshops(self, workshops):
         start_row = len(self.history_frame.winfo_children()) // 5  # 5 colonnes par atelier
         for i, workshop in enumerate(workshops, start=start_row):
+            user = workshop.get_user(self.db_manager)
             row_frame = ctk.CTkFrame(self.history_frame)
             row_frame.grid(row=i, column=0, columnspan=5, sticky="ew", padx=5, pady=2)
             row_frame.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
             row_frame.bind("<Button-1>", lambda e, w=workshop: self.on_workshop_click(w))
 
             labels = [
-                ctk.CTkLabel(row_frame, text=workshop.user_nom, anchor="w"),
-                ctk.CTkLabel(row_frame, text=workshop.user_prenom, anchor="w"),
+                ctk.CTkLabel(row_frame, text=user.nom if user else "N/A", anchor="w"),
+                ctk.CTkLabel(row_frame, text=user.prenom if user else "N/A", anchor="w"),
                 ctk.CTkLabel(row_frame, text=workshop.date, anchor="w"),
                 ctk.CTkLabel(row_frame, text=workshop.categorie, anchor="w"),
                 ctk.CTkLabel(row_frame, text=workshop.conseiller, anchor="w")

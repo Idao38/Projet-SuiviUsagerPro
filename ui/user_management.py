@@ -146,9 +146,27 @@ class UserManagement(ctk.CTkFrame, Observer):
             self.refresh_workshop_list()
 
     def refresh_user_list(self):
-        # Code pour rafraîchir la liste des utilisateurs
-        self.load_users()
+        # Effacer la liste actuelle
+        for item in self.user_list.get_children():
+            self.user_list.delete(item)
+        
+        # Recharger les utilisateurs depuis la base de données
+        users = User.get_all(self.db_manager)
+        
+        # Remplir la liste avec les utilisateurs mis à jour
+        for user in users:
+            self.user_list.insert("", "end", values=(user.id, user.nom, user.prenom, user.telephone, user.email))
 
     def refresh_workshop_list(self):
-        # Si nécessaire, ajoutez du code pour rafraîchir la liste des ateliers
-        pass
+        # Effacer la liste actuelle des ateliers (si elle existe)
+        if hasattr(self, 'workshop_list'):
+            for item in self.workshop_list.get_children():
+                self.workshop_list.delete(item)
+        
+        # Recharger les ateliers depuis la base de données
+        workshops = Workshop.get_all(self.db_manager)
+        
+        # Remplir la liste avec les ateliers mis à jour
+        for workshop in workshops:
+            user = User.get_by_id(self.db_manager, workshop.user_id)
+            self.workshop_list.insert("", "end", values=(workshop.id, user.nom, user.prenom, workshop.date, workshop.categorie, workshop.conseiller))

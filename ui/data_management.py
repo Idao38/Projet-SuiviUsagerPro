@@ -3,18 +3,22 @@ import os
 import customtkinter as ctk
 from tkinter import messagebox
 from utils.rgpd_manager import RGPDManager
-from utils.csv_export import CSVExporter
+from utils.csv_import_export import CSVExporter
 from models.user import User
 from datetime import timedelta
 from datetime import datetime
 from config import get_inactivity_period
+from tkinter import filedialog
+from utils.observer import Observer
 
-class DataManagement(ctk.CTkFrame):
-    def __init__(self, master, db_manager, **kwargs):
+class DataManagement(ctk.CTkFrame, Observer):
+    def __init__(self, master, db_manager, update_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.csv_exporter = CSVExporter(self.db_manager)
+        self.csv_exporter.add_observer(self)
         self.rgpd_manager = RGPDManager(self.db_manager)
+        self.update_callback = update_callback
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -45,6 +49,9 @@ class DataManagement(ctk.CTkFrame):
         # Bouton pour valider l'export
         self.export_button = ctk.CTkButton(self.export_frame, text="Exporter les données", command=self.export_csv)
         self.export_button.pack(pady=10)
+
+        # Section Importation
+        self.create_import_section()
 
     def create_section(self, parent, title, row):
         frame = ctk.CTkFrame(parent)
@@ -128,3 +135,20 @@ class DataManagement(ctk.CTkFrame):
             return False, f"Exportation partielle : {message_workshops} mais échec pour les utilisateurs : {message_users}"
         else:
             return False, f"Échec de l'exportation : {message_users} et {message_workshops}"
+
+    def create_import_section(self):
+        self.import_frame = self.create_section(self.content_frame, "Importation de données", 2)
+        self.import_button = ctk.CTkButton(self.import_frame, text="Importer des données", command=self.import_data)
+        self.import_button.pack(pady=10)
+
+    def update(self, observable, *args, **kwargs):
+        if isinstance(observable, CSVExporter) and args[0] == 'data_imported':
+            self.update_callback()
+            messagebox.showinfo("Importation réussie", f"Importation terminée. {args[1]['users']} utilisateurs et {args[1]['workshops']} ateliers importés.")
+
+    def import_data(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
+        if file_path:
+            success, message = self.csv_exporter.import_data(file_path)
+            if not success:
+                messagebox.showerror("Erreur d'importation", message)
