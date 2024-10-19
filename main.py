@@ -7,7 +7,7 @@ import os
 import logging
 
 
-VERSION = "0.9.3"
+VERSION = "1.0.0"
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -17,7 +17,7 @@ class MainApplication(ctk.CTk):
         super().__init__()
         
         self.geometry("1100x700")
-        self.title("Gestion des Usagers")
+        self.title("Gestion des Usagers - Version " + VERSION)
         self.minsize(1000, 600)
 
         # Initialiser le mode d'apparence en fonction de la configuration

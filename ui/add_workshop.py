@@ -61,8 +61,18 @@ class AddWorkshop(ctk.CTkFrame):
         self.description_entry = ctk.CTkTextbox(self.form_frame, height=100)
         self.description_entry.grid(row=4, column=0, columnspan=2, padx=20, pady=(10, 0), sticky="nsew")
 
-        self.submit_button = ctk.CTkButton(self.form_frame, text="Ajouter l'atelier", command=self.add_workshop)
-        self.submit_button.grid(row=5, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        # Créer un frame pour les boutons
+        self.button_frame = ctk.CTkFrame(self.form_frame)
+        self.button_frame.grid(row=5, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        self.button_frame.grid_columnconfigure((0, 1), weight=1)
+
+        # Bouton pour ajouter l'atelier
+        self.submit_button = ctk.CTkButton(self.button_frame, text="Ajouter l'atelier", command=self.add_workshop)
+        self.submit_button.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+
+        # Bouton de retour
+        self.back_button = ctk.CTkButton(self.button_frame, text="Retour", command=self.show_user_edit_callback)
+        self.back_button.grid(row=0, column=1, padx=(10, 0), sticky="ew")
 
         self.user.calculate_workshop_payment_status(self.db_manager)  # Calculer le statut
         self.update_payment_status()

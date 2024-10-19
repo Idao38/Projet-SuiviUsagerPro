@@ -17,6 +17,7 @@ from models.user import User
 from models.workshop import Workshop
 
 import logging
+import webbrowser
 
 class MainWindow(ctk.CTkFrame):
     def __init__(self, master, db_manager, update_callback, **kwargs):
@@ -98,6 +99,10 @@ class MainWindow(ctk.CTkFrame):
         # Bouton Paramètres en bas de la barre latérale
         self.settings_button = ctk.CTkButton(self.sidebar, text="Paramètres", command=self.show_settings)
         self.settings_button.grid(row=7, column=0, padx=20, pady=(0, 20), sticky="s")
+
+        # Ajouter un bouton Discord en bas de la barre latérale
+        self.discord_button = ctk.CTkButton(self.sidebar, text="Rejoindre Discord", command=self.open_discord)
+        self.discord_button.grid(row=8, column=0, padx=20, pady=(0, 20), sticky="s")
 
     def create_top_bar(self):
         self.top_bar = ctk.CTkFrame(self, height=40, corner_radius=0)
@@ -341,7 +346,8 @@ class MainWindow(ctk.CTkFrame):
             self.main_content,
             self.db_manager,
             workshop,
-            update_callback=self.update_all_sections
+            update_callback=self.update_all_sections,
+            show_previous_page_callback=lambda: self.show_user_edit(User.get_by_id(self.db_manager, workshop.user_id))
         )
         self.edit_workshop.pack(fill="both", expand=True)
         self.current_frame = self.edit_workshop
@@ -370,3 +376,7 @@ class MainWindow(ctk.CTkFrame):
         workshop.save(self.db_manager)
         workshop.add_observer(self.workshop_history)
         workshop.add_observer(self.dashboard)
+
+    def open_discord(self):
+        discord_link = "https://discord.gg/FD4DdWEQ"
+        webbrowser.open(discord_link)

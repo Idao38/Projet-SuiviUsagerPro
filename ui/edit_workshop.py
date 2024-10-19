@@ -6,11 +6,12 @@ from utils.date_utils import convert_to_db_date, convert_from_db_date
 import logging
 
 class EditWorkshop(ctk.CTkFrame):
-    def __init__(self, master, db_manager, workshop, update_callback, **kwargs):
+    def __init__(self, master, db_manager, workshop, update_callback, show_previous_page_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.db_manager = db_manager
         self.workshop = workshop
         self.update_callback = update_callback
+        self.show_previous_page_callback = show_previous_page_callback
         self.payant_original = workshop.payant
 
         # Ajoutez cette ligne pour récupérer l'utilisateur associé à l'atelier
@@ -55,8 +56,18 @@ class EditWorkshop(ctk.CTkFrame):
         self.description_entry.grid(row=4, column=0, columnspan=2, padx=20, pady=(10, 0), sticky="nsew")
         self.description_entry.insert("1.0", workshop.description)
 
-        self.submit_button = ctk.CTkButton(self.form_frame, text="Mettre à jour l'atelier", command=self.update_workshop)
-        self.submit_button.grid(row=6, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        # Créer un frame pour les boutons
+        self.button_frame = ctk.CTkFrame(self.form_frame)
+        self.button_frame.grid(row=6, column=0, columnspan=2, padx=20, pady=20, sticky="ew")
+        self.button_frame.grid_columnconfigure((0, 1), weight=1)
+
+        # Bouton pour mettre à jour l'atelier
+        self.submit_button = ctk.CTkButton(self.button_frame, text="Mettre à jour l'atelier", command=self.update_workshop)
+        self.submit_button.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+
+        # Bouton de retour
+        self.back_button = ctk.CTkButton(self.button_frame, text="Retour", command=self.show_previous_page_callback)
+        self.back_button.grid(row=0, column=1, padx=(10, 0), sticky="ew")
 
         self.update_payment_status()
 
